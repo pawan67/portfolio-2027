@@ -114,6 +114,54 @@
 }
 
 @layer components {
+  .live-value {
+    margin: 0.35rem 0 0.15rem;
+    font-family: var(--font-display);
+    font-size: 1.9rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    /* The panel starts as dashes and fills in. Without a reserved line box the
+       first frame would shift everything below it. */
+    min-height: 1.9rem;
+  }
+
+  .live-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .live-status::before {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: currentColor;
+  }
+  .live-status[data-state="live"] {
+    color: oklch(0.78 0.15 150);
+  }
+  .live-status[data-state="live"]::before {
+    animation: live-pulse 2s ease-in-out infinite;
+  }
+  .live-status[data-state="reconnecting"],
+  .live-status[data-state="unsupported"] {
+    color: oklch(0.82 0.15 85);
+  }
+
+  @keyframes live-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .live-status[data-state="live"]::before { animation: none; }
+  }
+
   /* /perf readouts. Rendered by script, so the styles live here rather than as
      utility classes in markup the browser builds. */
   .perf-dot {

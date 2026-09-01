@@ -22,6 +22,7 @@ import (
 
 	"github.com/pawan67/portfolio-2027/server/internal/assets"
 	"github.com/pawan67/portfolio-2027/server/internal/buildinfo"
+	"github.com/pawan67/portfolio-2027/server/internal/metrics"
 	"github.com/pawan67/portfolio-2027/server/internal/rum"
 )
 
@@ -37,6 +38,14 @@ const (
 	rumWindowDays = 28
 	// How often the in-memory histograms are checkpointed to disk.
 	rumFlushInterval = time.Minute
+
+	// One sample every two seconds reads as live without making the panel
+	// twitchy or the sampler expensive.
+	metricsInterval = 2 * time.Second
+	// Each listener is a held-open connection. This bounds them well below
+	// anything that would matter on a small VPS, and the handler returns 503
+	// with Retry-After past it rather than degrading for everyone.
+	metricsMaxListeners = 64
 )
 
 func main() {
@@ -70,6 +79,16 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
+	collector := metrics.NewCollector(
+		envOr("METRICS_PROC", "/proc"),
+		// Empty by default: inside a container this would otherwise report the
+		// overlay filesystem, which tells nobody anything. Point it at a
+		// mounted host path to get real figures.
+		os.Getenv("METRICS_DISK_PATH"),
+	)
+	counter := &metrics.Counter{}
+	hub := metrics.NewHub(collector, counter, metricsInterval, metricsMaxListeners)
+
 	info := buildinfo.Get(runtime.Version())
 	mux := http.NewServeMux()
 
@@ -87,6 +106,7 @@ func run(log *slog.Logger) error {
 
 	mux.Handle("POST /api/rum", rum.Ingest(store, time.Now))
 	mux.Handle("GET /api/perf", rum.Serve(store, time.Now))
+	mux.Handle("GET /api/metrics/stream", metrics.Stream(hub))
 
 	// Lets the perf page time this origin directly and compare it against the
 	// same request served through Cloudflare.
@@ -99,7 +119,7 @@ func run(log *slog.Logger) error {
 	addr := ":" + envOr("PORT", "8080")
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           securityHeaders(mux),
+		Handler:           securityHeaders(counter.Middleware(mux)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      20 * time.Second,
@@ -110,6 +130,7 @@ func run(log *slog.Logger) error {
 	defer stop()
 
 	go flushLoop(ctx, log, store)
+	go hub.Run(ctx)
 
 	// Bind before logging success, so a failed bind never emits "listening".
 	ln, err := net.Listen("tcp", addr)

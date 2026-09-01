@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import LivePanel from '../components/LivePanel.astro';
 
 const budgets = [
   { name: 'HTML, brotli', limit: '14 KB', why: 'fits the initial congestion window — one round trip' },
@@ -23,6 +24,11 @@ const hasOriginComparison = Boolean(import.meta.env.PUBLIC_ORIGIN_URL);
       Every site claims to be fast. This page is here so the claim can be
       checked.
     </p>
+
+    <!-- Live origin ------------------------------------------------------- -->
+    <div class="mt-14">
+      <LivePanel />
+    </div>
 
     <!-- Field data -------------------------------------------------------- -->
     <div class="mt-14" data-field-data>
@@ -111,4 +117,5 @@ const hasOriginComparison = Boolean(import.meta.env.PUBLIC_ORIGIN_URL);
 
 <script>
   import '../scripts/perf.ts';
+  import '../scripts/live.ts';
 </script>

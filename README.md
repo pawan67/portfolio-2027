@@ -72,6 +72,39 @@ browser — a CDN makes any site look fast, which makes most published numbers
 ambiguous. That needs a grey-clouded origin hostname to be configured; until then
 the control says so rather than showing half a comparison.
 
+## The live origin panel
+
+`/perf` streams the serving machine's own state over Server-Sent Events: CPU,
+memory, load average, host uptime, request rate, process heap and goroutine
+count, sampled every two seconds.
+
+Beacon uses gopsutil for this. Here the values are read straight out of `/proc`
+instead — the target is a Linux VPS, the numbers are identical, and it keeps the
+server dependency-free. Docker does not namespace `/proc`, so inside the
+container these are the host machine's real figures rather than the container's.
+
+Details that matter more than the feature:
+
+- **Sampling is centralised, not per-connection.** CPU percent is a delta between
+  two `/proc/stat` reads; sampling per listener would give every client a
+  different and wrong answer.
+- **The priming read is never published.** The first `/proc/stat` read has nothing
+  to diff against, so publishing it would show a confident `0%`. The panel holds
+  its skeleton for one interval instead.
+- **A slow listener cannot stall the sampler.** Sends are non-blocking and drop
+  that tick for that client; the next one is two seconds away.
+- **Write deadlines are extended per frame** via `http.ResponseController`.
+  Without it the server's 20s `WriteTimeout` would kill every stream.
+- **Heartbeat comments every 30s** keep the connection alive through Cloudflare,
+  which drops idle proxied connections at around 100 seconds.
+- **Listeners are capped**, and the handler returns `503` with `Retry-After` past
+  the cap rather than degrading the stream for everyone.
+
+Disk usage is off by default. `statfs` inside the container measures the overlay
+filesystem, and reporting the host's disk means bind-mounting a host path into an
+internet-facing container — a real trade, so it is opt-in via `METRICS_DISK_PATH`
+rather than quietly enabled.
+
 ## Performance budget
 
 Enforced in CI by `scripts/check-budget.sh`; the build fails when a budget is blown.
@@ -83,6 +116,12 @@ Enforced in CI by `scripts/check-budget.sh`; the build fails when a budget is bl
 | CSS per page, raw | 16 KB | guards parse cost and unbounded growth |
 | Render-blocking JS | 0 bytes | nothing stands between the HTML and first paint |
 | Deferred JS per page, brotli | 4 KB | measurement is not free, but it is bounded |
+| Deferred JS on `/perf`, brotli | 8 KB | stated override — that page is an instrument |
+
+`/perf` holds an SSE connection, fetches and renders field data, and runs the
+edge-versus-origin control, so it carries about 1.6 KB more than a content page.
+The override is declared in `scripts/check-budget.py` and printed on every run,
+so an exception cannot quietly become the norm.
 
 The JS budget was originally "zero bytes, full stop". Collecting field data makes
 that impossible — you cannot measure a real visitor without running code in their

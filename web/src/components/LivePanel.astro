@@ -1,0 +1,47 @@
+---
+// Server-rendered skeleton. The dashes are what a visitor without JavaScript
+// sees, and they say plainly that this needs a live connection rather than
+// pretending to be data.
+const cells = [
+  { key: 'cpu', label: 'CPU' },
+  { key: 'memory', label: 'Memory' },
+  { key: 'requests', label: 'Requests' },
+  { key: 'uptime', label: 'Host uptime' },
+  { key: 'process', label: 'Process heap' },
+];
+---
+
+<div data-live-panel data-state="pending">
+  <div class="flex items-baseline justify-between gap-4">
+    <h2 class="font-mono text-xs font-normal tracking-[0.14em] text-[var(--color-muted)] uppercase">
+      The machine serving this page
+    </h2>
+    <span class="live-status" data-live-status data-state="connecting">connecting</span>
+  </div>
+
+  <div class="mt-6 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3">
+    {cells.map(({ key, label }) => (
+      <div data-live={key}>
+        <p class="m-0 font-mono text-xs tracking-[0.08em] text-[var(--color-muted)] uppercase">
+          {label}
+        </p>
+        <p class="live-value" data-live-value>—</p>
+        <p class="m-0 text-xs text-[var(--color-muted)]" data-live-detail>&nbsp;</p>
+      </div>
+    ))}
+  </div>
+
+  <p class="mt-7 max-w-[var(--measure)] text-sm text-[var(--color-muted)]">
+    Streamed over Server-Sent Events from the same Go process that served this
+    HTML, sampled every two seconds from <code class="font-mono text-xs">/proc</code>.
+    Docker does not namespace <code class="font-mono text-xs">/proc</code>, so these
+    are the host VPS's real figures, not the container's.
+  </p>
+
+  <noscript>
+    <p class="mt-3 text-sm text-[var(--color-muted)]">
+      This panel needs an open connection, so it needs JavaScript. The dashes
+      above are not a loading state — without it there is nothing to show.
+    </p>
+  </noscript>
+</div>

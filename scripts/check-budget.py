@@ -22,7 +22,16 @@ MAX_CSS_RAW = 16_384
 
 # Field measurement cannot be done without shipping code. The rule is that none
 # of it blocks rendering, and that the amount stays bounded.
+#
+# Roughly 3KB of the default is the web-vitals library itself, which every page
+# carries because a beacon that only runs on some pages measures nothing useful.
 MAX_DEFERRED_JS_BR = 4_096
+
+# /perf is an instrument rather than a document: it holds an SSE connection,
+# fetches and renders field data, and runs the edge-versus-origin timing
+# control. That earns a higher ceiling. Overrides are listed here, and printed
+# on every run, so an exception can never quietly become the norm.
+DEFERRED_JS_OVERRIDES = {"perf/index.html": 8_192}
 
 STYLE_RE = re.compile(r"<style[^>]*>(.*?)</style>", re.S)
 SCRIPT_RE = re.compile(r"<script([^>]*)>", re.I)
@@ -80,8 +89,9 @@ def main() -> int:
 
     # Inline scripts already count against the HTML budget, so only external
     # files are measured here -- counting both would double-charge them.
-    print(f"== Deferred external JS per page (budget {MAX_DEFERRED_JS_BR}B brotli)")
+    print(f"== Deferred external JS per page (default budget {MAX_DEFERRED_JS_BR}B brotli)")
     for page in pages:
+        rel = str(page.relative_to(dist))
         total = 0
         for attrs in SCRIPT_RE.findall(page.read_text()):
             m = SRC_RE.search(attrs)
@@ -90,9 +100,12 @@ def main() -> int:
             asset = dist / m.group(1).lstrip("/")
             if asset.is_file():
                 total += brotli(asset.read_bytes())
-        ok = total <= MAX_DEFERRED_JS_BR
+
+        budget = DEFERRED_JS_OVERRIDES.get(rel, MAX_DEFERRED_JS_BR)
+        note = "  (override)" if rel in DEFERRED_JS_OVERRIDES else ""
+        ok = total <= budget
         failed |= not ok
-        print(f"  {'ok  ' if ok else 'FAIL'} {page.relative_to(dist)!s:<36} {total:5d}B br")
+        print(f"  {'ok  ' if ok else 'FAIL'} {rel:<36} {total:5d}B br / {budget}B{note}")
 
     return 1 if failed else 0
 

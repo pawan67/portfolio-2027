@@ -9,6 +9,15 @@ services:
       RUM_DATA: /data/rum.json
       # Origin of the site itself, used for CORS on the /api/ping timing probe.
       SITE_ORIGIN: "https://${DOMAIN}"
+      # Host CPU, memory, load and uptime come from /proc, which Docker does not
+      # namespace, so they need no extra mounts.
+      #
+      # Disk is different: statfs inside the container measures the overlay
+      # filesystem, which is meaningless. Reporting host disk means bind-mounting
+      # a host path, and mounting host root into an internet-facing container is
+      # a real trade rather than a free one. Left off by default; if you enable
+      # it, mount the narrowest useful path read-only rather than /.
+      # METRICS_DISK_PATH: /hostfs
 
     volumes:
       - rum-data:/data
