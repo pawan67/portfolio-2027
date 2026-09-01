@@ -114,6 +114,68 @@
 }
 
 @layer components {
+  /* /perf readouts. Rendered by script, so the styles live here rather than as
+     utility classes in markup the browser builds. */
+  .perf-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    flex: none;
+    background: var(--color-muted);
+  }
+  .perf-dot[data-rating="good"] { background: oklch(0.78 0.15 150); }
+  .perf-dot[data-rating="needs-improvement"] { background: oklch(0.82 0.15 85); }
+  .perf-dot[data-rating="poor"] { background: oklch(0.68 0.19 25); }
+
+  .perf-row {
+    border-top: 1px solid var(--color-line);
+    padding: 0.9rem 0;
+  }
+  .perf-row-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+  .perf-row-compact {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    border-top: 1px solid var(--color-line);
+    padding: 0.55rem 0;
+  }
+
+  .perf-name {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    color: var(--color-muted);
+    min-width: 3.5rem;
+  }
+  .perf-value {
+    margin-left: auto;
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .perf-value-sm {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .perf-detail,
+  .perf-note {
+    margin: 0.35rem 0 0;
+    font-size: 0.8rem;
+    color: var(--color-muted);
+  }
+  .perf-row-compact .perf-detail {
+    margin: 0;
+    min-width: 7rem;
+    text-align: right;
+  }
+
   /* Long-form body copy for case studies. */
   .prose {
     max-width: var(--measure);

@@ -45,6 +45,7 @@ jobs:
             ${{ env.IMAGE }}:latest
           build-args: |
             SITE_URL=${{ vars.SITE_URL }}
+            PUBLIC_ORIGIN_URL=${{ vars.PUBLIC_ORIGIN_URL }}
             COMMIT=${{ github.sha }}
             BUILT_AT=${{ steps.stamp.outputs.epoch }}
           cache-from: type=gha

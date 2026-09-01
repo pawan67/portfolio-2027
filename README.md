@@ -18,7 +18,7 @@ library.
 
 | Layer | Choice |
 |---|---|
-| Site | Astro 7, `output: 'static'`, React islands only where interactive |
+| Site | Astro 7, `output: 'static'`, no UI framework |
 | Styling | Tailwind v4, inlined into every document |
 | Origin | Go 1.26, stdlib only |
 | Platform | Dokploy in Compose mode (definition lives in `infra/compose/`) |
@@ -39,7 +39,38 @@ library.
   103 Early Hints response. Traefik will not forward a 1xx from the origin, so the
   edge has to be the one to send it.
 - **Probes itself** for Docker's healthcheck, since `scratch` has no shell.
-- **Drains on SIGTERM**, so Swarm's `start-first` rolling update drops nothing.
+- **Drains on SIGTERM**, so Swarm's `start-first` rolling update drops nothing,
+  and checkpoints field data on the way out.
+- **Collects and publishes its own field data** — see below.
+
+## Field measurement
+
+`/perf` publishes what real visitors experience, not a Lighthouse screenshot
+taken on a good day.
+
+A deferred module script reports LCP, INP, CLS, TTFB and FCP via `sendBeacon` to
+`/api/rum`. The origin folds each value into a fixed-bucket histogram and throws
+the value away. There is no database, no per-visitor row, no cookie, no
+identifier, and no third party. Country comes from Cloudflare's edge header; the
+IP address is never stored.
+
+Histograms rather than raw samples is how CrUX reports Core Web Vitals, and it
+means a percentile query is constant time and the whole 28-day window is a few
+kilobytes of JSON. Buckets are geometrically spaced so relative error stays
+roughly constant — a 50ms error matters at 200ms and is irrelevant at 8s.
+
+Two consequences worth stating plainly:
+
+- **Percentiles are estimates.** Interpolating inside a bucket puts them within
+  about one bucket width of the true value. Verified against a known uniform
+  distribution in `internal/rum`: true p75 1750ms, reported 1748ms.
+- **Prerendered pages are excluded** until activated. Links prerender on hover,
+  and counting a prerender nobody looked at would flatter the numbers.
+
+`/perf` also measures this origin against the edge, live, from the visitor's own
+browser — a CDN makes any site look fast, which makes most published numbers
+ambiguous. That needs a grey-clouded origin hostname to be configured; until then
+the control says so rather than showing half a comparison.
 
 ## Performance budget
 
@@ -50,7 +81,13 @@ Enforced in CI by `scripts/check-budget.sh`; the build fails when a budget is bl
 | HTML, brotli | 14 KB | fits the initial congestion window — one round trip |
 | CSS per page, brotli | 6 KB | inlined, so it is paid on every document |
 | CSS per page, raw | 16 KB | guards parse cost and unbounded growth |
-| JS on the landing page | 0 bytes | islands are opt-in and deferred |
+| Render-blocking JS | 0 bytes | nothing stands between the HTML and first paint |
+| Deferred JS per page, brotli | 4 KB | measurement is not free, but it is bounded |
+
+The JS budget was originally "zero bytes, full stop". Collecting field data makes
+that impossible — you cannot measure a real visitor without running code in their
+browser. Rather than quietly drop the budget, it was split: nothing may block
+rendering, and what does ship stays bounded and is checked per page.
 
 The CSS budget started at 10 KB uncompressed and was revised upward once the
 design system existed: Tailwind's preflight is ~4.3 KB and the theme layer
@@ -116,8 +153,18 @@ Required repository configuration:
   below Dokploy, but creating the Dokploy project itself is a manual step. This is
   not fully reproducible infrastructure and is not described as such.
 - **`BuildSeconds` is wired but unset.** A build cannot bake in how long it took to
-  build. It is replaced in Phase 3 by an authenticated ingest that CI calls after
-  rollout, which measures real end-to-end deploy latency — a better number anyway.
+  build. Replacing it with an authenticated post-rollout ingest that measures real
+  end-to-end deploy latency is still outstanding.
+- **One replica, deliberately.** The field-data checkpoint is a single file on a
+  shared volume; two replicas would keep separate in-memory histograms and
+  overwrite each other on flush. Zero-downtime does not depend on replica count —
+  `start-first` provides it. The one window where two tasks coexist is a rolling
+  deploy, which at a 60s flush interval can drop a handful of samples. That is
+  immaterial to a 28-day percentile, but it is not nothing.
+- **Astro does not evaluate `{}` inside `<script>`.** The speculation rules are
+  written as literal JSON with `is:inline` for this reason. Interpolating a
+  frontmatter variable emits the source text verbatim and the rules silently fail
+  to parse — it looks correct in the editor and does nothing in the browser.
 - **HSTS omits `preload`.** Submitting to the preload list is effectively
   irreversible; opt in deliberately once every subdomain is HTTPS.
 - **Font preload hints currently list every `.woff2`.** Narrow this to the single

@@ -47,11 +47,20 @@ const fullTitle = Astro.url.pathname === '/' ? title : `${title} — Pawan`;
     <link rel="sitemap" href="/sitemap-index.xml" />
 
     {/* Declarative prerender-on-hover. Parsed, never executed: 0KB of JS.
-        Safe because every route is a static document with no side effects. */}
-    <script type="speculationrules">
-      {JSON.stringify({
-        prerender: [{ where: { href_matches: '/*' }, eagerness: 'moderate' }],
-      })}
+        Safe because every route is a static document with no side effects.
+
+        Written as literal JSON with is:inline. Astro does not evaluate {}
+        expressions inside <script>, so building this string in the frontmatter
+        and interpolating it emits the source text verbatim and the rules
+        silently fail to parse. */}
+    <script type="speculationrules" is:inline>
+      {"prerender":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}
+    </script>
+    {/* Deferred module script: measured, never render-blocking. It is what
+        makes /perf possible -- the site cannot publish field data it does not
+        collect. */}
+    <script>
+      import '../scripts/vitals.ts';
     </script>
   </head>
 

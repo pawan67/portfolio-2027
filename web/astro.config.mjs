@@ -1,6 +1,5 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
-import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -47,7 +46,11 @@ export default defineConfig({
     syntaxHighlight: 'prism',
   },
 
-  integrations: [react(), sitemap()],
+  // No React integration: nothing on the site is interactive enough to need it,
+  // and including it emitted a 51KB (brotli) client runtime chunk that no page
+  // referenced but every image still carried. Add it back when an island
+  // genuinely earns it.
+  integrations: [sitemap()],
 
   vite: {
     plugins: [tailwindcss()],

@@ -6,6 +6,12 @@ services:
 
     environment:
       PORT: "8080"
+      RUM_DATA: /data/rum.json
+      # Origin of the site itself, used for CORS on the /api/ping timing probe.
+      SITE_ORIGIN: "https://${DOMAIN}"
+
+    volumes:
+      - rum-data:/data
 
     healthcheck:
       # The image is `scratch`; the binary probes itself.
@@ -16,7 +22,15 @@ services:
       start_period: 2s
 
     deploy:
-      replicas: 2
+      # Deliberately one replica. The field-data checkpoint is a single file on
+      # a shared volume, and two replicas would each hold their own in-memory
+      # histograms and overwrite each other on flush. Zero-downtime deploys do
+      # not depend on replica count -- start-first below is what provides them.
+      #
+      # The one window where two tasks briefly coexist is a rolling deploy. At a
+      # 60s flush interval that can drop at most a few samples, which is
+      # immaterial to a percentile over 28 days.
+      replicas: 1
       update_config:
         # start-first is what makes a deploy zero-downtime: the new task must
         # pass its healthcheck before the old one is stopped.
@@ -48,6 +62,9 @@ services:
 
     networks:
       - dokploy-network
+
+volumes:
+  rum-data:
 
 networks:
   dokploy-network:

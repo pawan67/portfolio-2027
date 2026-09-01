@@ -1,7 +1,8 @@
 // Command server is the origin for the portfolio site.
 //
 // The built Astro output is compiled into the binary, so the container is a
-// single static file with no runtime dependencies and no filesystem reads.
+// single static file with no runtime dependencies and no filesystem reads on
+// the request path.
 package main
 
 import (
@@ -21,6 +22,7 @@ import (
 
 	"github.com/pawan67/portfolio-2027/server/internal/assets"
 	"github.com/pawan67/portfolio-2027/server/internal/buildinfo"
+	"github.com/pawan67/portfolio-2027/server/internal/rum"
 )
 
 // dist is populated by the build: `pnpm build` in web/, then the output plus
@@ -28,6 +30,14 @@ import (
 //
 //go:embed all:dist
 var distFS embed.FS
+
+const (
+	// Matches CrUX's reporting window, so the published p75 is comparable to
+	// what external tools report for the same site.
+	rumWindowDays = 28
+	// How often the in-memory histograms are checkpointed to disk.
+	rumFlushInterval = time.Minute
+)
 
 func main() {
 	// The runtime image is `scratch`, so there is no curl for Docker's
@@ -55,19 +65,35 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
-	info := buildinfo.Get(runtime.Version())
+	store, err := rum.NewStore(envOr("RUM_DATA", "/data/rum.json"), rumWindowDays)
+	if err != nil {
+		return err
+	}
 
+	info := buildinfo.Get(runtime.Version())
 	mux := http.NewServeMux()
+
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("ok\n"))
 	})
+
 	mux.HandleFunc("GET /api/build", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Cache-Control", "public, max-age=60")
 		_ = json.NewEncoder(w).Encode(info)
 	})
+
+	mux.Handle("POST /api/rum", rum.Ingest(store, time.Now))
+	mux.Handle("GET /api/perf", rum.Serve(store, time.Now))
+
+	// Lets the perf page time this origin directly and compare it against the
+	// same request served through Cloudflare.
+	ping := pingHandler(envOr("SITE_ORIGIN", ""))
+	mux.Handle("GET /api/ping", ping)
+	mux.Handle("OPTIONS /api/ping", ping)
+
 	mux.Handle("/", site.Handler())
 
 	addr := ":" + envOr("PORT", "8080")
@@ -82,6 +108,8 @@ func run(log *slog.Logger) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	go flushLoop(ctx, log, store)
 
 	// Bind before logging success, so a failed bind never emits "listening".
 	ln, err := net.Listen("tcp", addr)
@@ -109,11 +137,61 @@ func run(log *slog.Logger) error {
 	}
 
 	// Swarm sends SIGTERM before rotating a task out. Drain in-flight requests
-	// so a rolling deploy drops nothing.
+	// so a rolling deploy drops nothing, then checkpoint whatever the last
+	// interval did not cover.
 	log.Info("shutting down")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return srv.Shutdown(shutdownCtx)
+
+	shutdownErr := srv.Shutdown(shutdownCtx)
+	if err := store.Save(); err != nil {
+		log.Error("final rum checkpoint failed", "err", err)
+	}
+	return shutdownErr
+}
+
+// flushLoop checkpoints field data and drops days that have aged out.
+func flushLoop(ctx context.Context, log *slog.Logger, store *rum.Store) {
+	ticker := time.NewTicker(rumFlushInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-ticker.C:
+			if removed := store.Prune(now); removed > 0 {
+				log.Info("pruned rum buckets", "count", removed)
+			}
+			if err := store.Save(); err != nil {
+				log.Error("rum checkpoint failed", "err", err)
+			}
+		}
+	}
+}
+
+// pingHandler answers a minimal timing probe. allowOrigin is the site's public
+// origin; the perf page is served from there and measures this endpoint on the
+// bare-origin hostname, which makes the request cross-origin.
+func pingHandler(allowOrigin string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		if allowOrigin != "" {
+			h.Set("Access-Control-Allow-Origin", allowOrigin)
+			// Without this, Resource Timing reports zeroes for every phase of a
+			// cross-origin request and the comparison would be meaningless.
+			h.Set("Timing-Allow-Origin", allowOrigin)
+			h.Set("Vary", "Origin")
+		}
+		h.Set("Cache-Control", "no-store")
+
+		if r.Method == http.MethodOptions {
+			h.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			h.Set("Access-Control-Max-Age", "86400")
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	})
 }
 
 // securityHeaders sets the headers a meta CSP cannot express, plus the usual

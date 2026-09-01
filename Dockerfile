@@ -12,7 +12,10 @@ COPY web/ ./
 ARG SITE_URL=https://example.com
 ARG COMMIT=dev
 ARG BUILT_AT=0
-ENV SITE_URL=${SITE_URL} COMMIT=${COMMIT} BUILT_AT=${BUILT_AT}
+# Enables the bare-origin comparison on /perf. Unset simply hides that control.
+ARG PUBLIC_ORIGIN_URL=
+ENV SITE_URL=${SITE_URL} COMMIT=${COMMIT} BUILT_AT=${BUILT_AT} \
+    PUBLIC_ORIGIN_URL=${PUBLIC_ORIGIN_URL}
 RUN pnpm build
 
 # ---------------------------------------------------------------------------
@@ -47,6 +50,10 @@ RUN go mod download
 COPY server/ ./
 COPY --from=compress /dist ./dist
 
+# scratch has no shell, so the data directory has to be created here and
+# copied in with ownership already set.
+RUN mkdir -p /data && chown 65534:65534 /data
+
 ARG COMMIT=dev
 ARG BUILT_AT=0
 ARG BUILD_SECONDS=0
@@ -63,10 +70,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
 # ---------------------------------------------------------------------------
 FROM scratch
 COPY --from=build /server /server
+COPY --from=build --chown=65534:65534 /data /data
 
 USER 65534:65534
 EXPOSE 8080
-ENV PORT=8080
+ENV PORT=8080 RUM_DATA=/data/rum.json
+VOLUME ["/data"]
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=2s --retries=3 \
   CMD ["/server", "-healthcheck"]

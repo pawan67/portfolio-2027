@@ -1,4 +1,7 @@
 SITE_URL     ?= http://localhost:8080
+# Set to the grey-clouded origin hostname to enable the /perf edge-vs-origin
+# comparison. Empty locally, so that control stays hidden.
+PUBLIC_ORIGIN_URL ?=
 IMAGE        ?= ghcr.io/pawan67/portfolio-2027
 COMMIT       := $(shell git rev-parse --verify --quiet HEAD || echo dev)
 BUILT_AT     := $(shell date +%s)
@@ -15,7 +18,8 @@ dev: ## Astro dev server with HMR
 	cd web && pnpm dev
 
 site: ## Build the static site
-	cd web && SITE_URL=$(SITE_URL) COMMIT=$(COMMIT) BUILT_AT=$(BUILT_AT) pnpm build
+	cd web && SITE_URL=$(SITE_URL) COMMIT=$(COMMIT) BUILT_AT=$(BUILT_AT) \
+	  PUBLIC_ORIGIN_URL=$(PUBLIC_ORIGIN_URL) pnpm build
 
 embed: site ## Copy + pre-compress the site into server/dist
 	rm -rf server/dist && mkdir -p server/dist
@@ -40,6 +44,9 @@ build: embed ## Build the server binary with the site embedded
 
 run: build ## Build and serve on :8080
 	./bin/server
+
+budget: site ## Check the performance budget against the built site
+	python3 scripts/check-budget.py web/dist
 
 test: ## Run Go tests
 	cd server && go test ./...
