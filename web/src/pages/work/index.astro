@@ -1,0 +1,30 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import WorkRow from '../../components/WorkRow.astro';
+
+const work = (await getCollection('work', ({ data }) => !data.draft)).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+---
+
+<BaseLayout title="Work" description="Selected projects, with the decisions behind them.">
+  <section class="pt-10">
+    <h1 class="text-[length:var(--text-title)]">Work</h1>
+    <p class="mt-4 max-w-[var(--measure)] text-[var(--color-muted)]">
+      A few things worth explaining, and why they are built the way they are.
+    </p>
+
+    <ul class="mt-10 list-none p-0">
+      {work.map((entry) => (
+        <WorkRow
+          href={`/work/${entry.id}/`}
+          title={entry.data.title}
+          summary={entry.data.summary}
+          year={entry.data.year}
+          stack={entry.data.stack}
+        />
+      ))}
+    </ul>
+  </section>
+</BaseLayout>

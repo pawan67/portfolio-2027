@@ -1,0 +1,59 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Phase 3 replaces the static copy below with real p75s read from the origin's
+// RUM store, plus the edge-vs-origin timing control. The page exists now so the
+// site links somewhere honest in the meantime.
+const budgets = [
+  { name: 'HTML, brotli', limit: '14 KB', why: 'fits the initial congestion window — one round trip' },
+  { name: 'CSS per page', limit: '6 KB brotli', why: 'inlined, so it is paid on every document' },
+  { name: 'JS on first paint', limit: '0 bytes', why: 'islands are opt-in and deferred' },
+  { name: 'Fonts', limit: '21 KB', why: 'one display face, metric-matched fallback, CLS 0' },
+];
+---
+
+<BaseLayout
+  title="Perf"
+  description="What this site actually measures, rather than what it claims."
+>
+  <section class="pt-10">
+    <h1 class="text-[length:var(--text-title)]">Measurements</h1>
+
+    <p class="mt-4 max-w-[var(--measure)] text-[length:var(--text-lead)] text-[var(--color-muted)]">
+      Every site claims to be fast. This page is here so the claim can be
+      checked.
+    </p>
+
+    <div class="mt-14">
+      <h2 class="font-mono text-xs font-normal tracking-[0.14em] text-[var(--color-muted)] uppercase">
+        Budgets
+      </h2>
+
+      <p class="mt-4 max-w-[var(--measure)] text-[var(--color-muted)]">
+        These are enforced in CI. A build that exceeds one of them fails and
+        never reaches the server.
+      </p>
+
+      <dl class="mt-8 list-none p-0">
+        {budgets.map(({ name, limit, why }) => (
+          <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-t border-[var(--color-line)] py-4">
+            <dt class="font-mono text-sm">{name}</dt>
+            <dd class="m-0 font-mono text-sm text-[var(--color-accent)]">{limit}</dd>
+            <p class="m-0 w-full text-sm text-[var(--color-muted)]">{why}</p>
+          </div>
+        ))}
+      </dl>
+    </div>
+
+    <div class="mt-16 rounded border border-dashed border-[var(--color-line)] p-6">
+      <h2 class="font-mono text-xs font-normal tracking-[0.14em] text-[var(--color-muted)] uppercase">
+        Not live yet
+      </h2>
+      <p class="mt-3 mb-0 max-w-[var(--measure)] text-sm text-[var(--color-muted)]">
+        Field Core Web Vitals collected from real visitors, the live origin
+        panel, and the edge-versus-origin timing control are not built yet.
+        Until they are, this page does not show numbers it cannot back up.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

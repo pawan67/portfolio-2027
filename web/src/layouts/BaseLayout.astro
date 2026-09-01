@@ -1,15 +1,17 @@
 ---
 import '../styles/global.css';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 
 interface Props {
   title: string;
   description: string;
-  /** Set on the one page-level image that is the LCP element, if any. */
   ogImage?: string;
 }
 
 const { title, description, ogImage } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const fullTitle = Astro.url.pathname === '/' ? title : `${title} — Pawan`;
 ---
 
 <!doctype html>
@@ -17,29 +19,56 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
+    <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
 
-    <meta name="theme-color" content="#0d1117" />
+    {/* The only render-critical subresource. Stable filename so it can be
+        preloaded without knowing a build hash; versioned so it stays
+        immutably cacheable. */}
+    <link
+      rel="preload"
+      href="/fonts/instrument-serif-v1.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <meta name="theme-color" content="#131211" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content={title} />
+    <meta property="og:site_name" content="Pawan" />
+    <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     {ogImage && <meta property="og:image" content={new URL(ogImage, Astro.site).href} />}
     <meta name="twitter:card" content="summary_large_image" />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
 
-    {/* Declarative prerender-on-hover. Parsed, not executed: 0KB of JS.
-        Safe here because every route is a static document with no side effects. */}
+    {/* Declarative prerender-on-hover. Parsed, never executed: 0KB of JS.
+        Safe because every route is a static document with no side effects. */}
     <script type="speculationrules">
       {JSON.stringify({
         prerender: [{ where: { href_matches: '/*' }, eagerness: 'moderate' }],
       })}
     </script>
   </head>
+
   <body>
-    <slot />
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:m-3 focus:rounded focus:bg-[var(--color-surface)] focus:px-3 focus:py-2"
+    >
+      Skip to content
+    </a>
+
+    <SiteHeader />
+
+    <main id="main" class="mx-auto w-full max-w-3xl grow px-6">
+      <slot />
+    </main>
+
+    <SiteFooter />
   </body>
 </html>

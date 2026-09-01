@@ -1,0 +1,53 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="About"
+  description="Backend and infrastructure engineer. Self-hosts everything on one VPS."
+>
+  <section class="pt-10">
+    <h1 class="text-[length:var(--text-title)]">About</h1>
+
+    <div class="prose mt-10">
+      <!-- TODO(pawan): this is scaffolding built from what is verifiable in your
+           repos. Replace it with your own words before this goes live. -->
+      <p>
+        I work on backend and infrastructure — mostly Go, with enough React to
+        build the interfaces on top of it. I prefer systems that are boring to
+        operate: one binary, one process, no runtime dependencies to drift.
+      </p>
+
+      <p>
+        Everything I run lives on a VPS I administer myself, deployed through a
+        self-hosted PaaS rather than a managed platform. That is partly
+        stubbornness and partly the fastest way I know to actually learn how the
+        pieces fit together.
+      </p>
+
+      <h3>How this site is built</h3>
+
+      <p>
+        The site is a static build compiled into a Go binary and shipped in a
+        container with nothing else in it. The origin serves pre-compressed
+        bytes, picks the encoding by measured size rather than by reputation, and
+        drains cleanly on shutdown so deploys drop nothing. There is no
+        JavaScript on the page you are reading.
+      </p>
+
+      <p>
+        The <a href="/perf/">measurements page</a> publishes what visitors
+        actually experience, rather than a Lighthouse screenshot taken on a good
+        day.
+      </p>
+
+      <h3>Elsewhere</h3>
+
+      <!-- TODO(pawan): real links. -->
+      <ul>
+        <li>GitHub — add link</li>
+        <li>Email — add address</li>
+      </ul>
+    </div>
+  </section>
+</BaseLayout>

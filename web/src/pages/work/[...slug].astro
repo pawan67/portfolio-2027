@@ -1,0 +1,57 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const work = await getCollection('work', ({ data }) => !data.draft);
+  return work.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const { title, summary, year, stack, role, repo, live } = entry.data;
+---
+
+<BaseLayout title={title} description={summary}>
+  <article class="pt-10">
+    <header>
+      <h1 class="text-[length:var(--text-title)]">{title}</h1>
+      <p class="mt-3 max-w-[var(--measure)] text-[length:var(--text-lead)] text-[var(--color-muted)]">
+        {summary}
+      </p>
+
+      <dl class="mt-8 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-[var(--color-line)] pt-6 font-mono text-xs sm:grid-cols-4">
+        <div>
+          <dt class="text-[var(--color-muted)]">Year</dt>
+          <dd class="mt-1 ml-0">{year}</dd>
+        </div>
+        {role && (
+          <div>
+            <dt class="text-[var(--color-muted)]">Role</dt>
+            <dd class="mt-1 ml-0">{role}</dd>
+          </div>
+        )}
+        <div class="col-span-2">
+          <dt class="text-[var(--color-muted)]">Stack</dt>
+          <dd class="mt-1 ml-0">{stack.join(' · ')}</dd>
+        </div>
+        {(repo || live) && (
+          <div class="col-span-2 flex gap-4 sm:col-span-4">
+            {repo && <a href={repo} class="underline underline-offset-4">Source</a>}
+            {live && <a href={live} class="underline underline-offset-4">Live</a>}
+          </div>
+        )}
+      </dl>
+    </header>
+
+    <div class="prose mt-14">
+      <Content />
+    </div>
+
+    <p class="mt-16 border-t border-[var(--color-line)] pt-6 text-sm">
+      <a href="/work/" class="text-[var(--color-muted)] no-underline hover:text-[var(--color-text)]">
+        ← All work
+      </a>
+    </p>
+  </article>
+</BaseLayout>

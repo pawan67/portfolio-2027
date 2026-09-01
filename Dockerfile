@@ -10,7 +10,9 @@ COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
 ARG SITE_URL=https://example.com
-ENV SITE_URL=${SITE_URL}
+ARG COMMIT=dev
+ARG BUILT_AT=0
+ENV SITE_URL=${SITE_URL} COMMIT=${COMMIT} BUILT_AT=${BUILT_AT}
 RUN pnpm build
 
 # ---------------------------------------------------------------------------

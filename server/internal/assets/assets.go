@@ -28,9 +28,19 @@ var encodingExt = map[string]string{
 	"gzip": ".gz",
 }
 
-// immutablePrefix holds Astro's content-hashed output (build.assets: '_a').
-// Anything under it can be cached forever.
-const immutablePrefix = "/_a/"
+// immutablePrefixes hold content whose URL changes when its bytes change:
+// Astro's hashed output (build.assets: '_a') and hand-versioned font files.
+// Anything under them can be cached forever.
+var immutablePrefixes = []string{"/_a/", "/fonts/"}
+
+func isImmutable(route string) bool {
+	for _, prefix := range immutablePrefixes {
+		if strings.HasPrefix(route, prefix) {
+			return true
+		}
+	}
+	return false
+}
 
 type representation struct {
 	encoding string // "" for identity
@@ -102,7 +112,7 @@ func Load(fsys fs.FS) (*Set, error) {
 			return len(f.encoded[i].body) < len(f.encoded[j].body)
 		})
 
-		f.immutable = strings.HasPrefix("/"+p, immutablePrefix)
+		f.immutable = isImmutable("/" + p)
 
 		for _, route := range routesFor(p) {
 			s.files[route] = f

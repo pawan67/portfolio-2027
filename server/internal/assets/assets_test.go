@@ -13,15 +13,15 @@ func testSet(t *testing.T) *Set {
 
 	fsys := fstest.MapFS{
 		// Sizes are deliberate: br is smallest, then zstd, then gzip.
-		"index.html":        {Data: []byte("<html>home</html>")},
-		"index.html.br":     {Data: []byte("br")},
-		"index.html.zst":    {Data: []byte("zstd")},
-		"index.html.gz":     {Data: []byte("gzip!!")},
-		"about/index.html":  {Data: []byte("<html>about</html>")},
-		"404/index.html":    {Data: []byte("<html>missing</html>")},
-		"_a/app.Bx1.css":    {Data: []byte("body{}")},
-		"_a/app.Bx1.css.br": {Data: []byte("br-css")},
-		"_a/inter.woff2":    {Data: []byte("font")},
+		"index.html":             {Data: []byte("<html>home</html>")},
+		"index.html.br":          {Data: []byte("br")},
+		"index.html.zst":         {Data: []byte("zstd")},
+		"index.html.gz":          {Data: []byte("gzip!!")},
+		"about/index.html":       {Data: []byte("<html>about</html>")},
+		"404/index.html":         {Data: []byte("<html>missing</html>")},
+		"_a/app.Bx1.css":         {Data: []byte("body{}")},
+		"_a/app.Bx1.css.br":      {Data: []byte("br-css")},
+		"fonts/display-v1.woff2": {Data: []byte("font")},
 	}
 
 	s, err := Load(fsys)
@@ -140,10 +140,16 @@ func TestConditionalRequest(t *testing.T) {
 func TestCacheControl(t *testing.T) {
 	s := testSet(t)
 
-	hashed := get(t, s, http.MethodGet, "/_a/app.Bx1.css", "", "").Header.Get("Cache-Control")
-	if hashed != "public, max-age=31536000, immutable" {
-		t.Errorf("hashed asset Cache-Control = %q", hashed)
+	const immutable = "public, max-age=31536000, immutable"
+
+	// Both content-hashed assets and hand-versioned fonts are immutable.
+	for _, route := range []string{"/_a/app.Bx1.css", "/fonts/display-v1.woff2"} {
+		if got := get(t, s, http.MethodGet, route, "", "").Header.Get("Cache-Control"); got != immutable {
+			t.Errorf("%s: Cache-Control = %q, want %q", route, got, immutable)
+		}
 	}
+
+	hashed := immutable
 
 	html := get(t, s, http.MethodGet, "/", "", "").Header.Get("Cache-Control")
 	if html == hashed {

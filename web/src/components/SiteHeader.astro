@@ -1,0 +1,32 @@
+---
+const { pathname } = Astro.url;
+
+const links = [
+  { href: '/work/', label: 'Work' },
+  { href: '/perf/', label: 'Perf' },
+  { href: '/about/', label: 'About' },
+];
+
+const isCurrent = (href: string) =>
+  href === '/' ? pathname === '/' : pathname.startsWith(href);
+---
+
+<header class="mx-auto flex w-full max-w-3xl items-baseline justify-between px-6 py-8">
+  <a href="/" class="font-display text-lg tracking-tight no-underline">Pawan</a>
+
+  <nav aria-label="Primary">
+    <ul class="flex list-none gap-6 p-0 text-sm">
+      {links.map(({ href, label }) => (
+        <li>
+          <a
+            href={href}
+            aria-current={isCurrent(href) ? 'page' : undefined}
+            class="no-underline text-[var(--color-muted)] hover:text-[var(--color-text)] aria-[current=page]:text-[var(--color-text)]"
+          >
+            {label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+</header>

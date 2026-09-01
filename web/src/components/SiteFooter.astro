@@ -1,0 +1,27 @@
+---
+// The same COMMIT/BUILT_AT that CI bakes into the Go binary is passed to this
+// build, so the footer and /api/build agree by construction -- no runtime fetch
+// and no JavaScript needed to show what is deployed.
+const commit = (process.env.COMMIT ?? 'dev').slice(0, 7);
+const builtAt = Number(process.env.BUILT_AT ?? 0);
+
+const deployed = builtAt
+  ? new Date(builtAt * 1000).toISOString().slice(0, 10)
+  : null;
+
+const link = 'underline underline-offset-4 hover:text-[var(--color-text)]';
+---
+
+<footer class="mx-auto mt-auto w-full max-w-3xl px-6 pt-24 pb-12 text-sm text-[var(--color-muted)]">
+  <hr class="mb-6 border-0 border-t border-[var(--color-line)]" />
+
+  <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+    <p class="m-0">
+      Self-hosted on one VPS. <a href="/perf/" class={link}>See the numbers</a>.
+    </p>
+
+    <p class="m-0 font-mono text-xs">
+      {commit}{deployed && <> · deployed {deployed}</>}
+    </p>
+  </div>
+</footer>

@@ -15,7 +15,7 @@ dev: ## Astro dev server with HMR
 	cd web && pnpm dev
 
 site: ## Build the static site
-	cd web && SITE_URL=$(SITE_URL) pnpm build
+	cd web && SITE_URL=$(SITE_URL) COMMIT=$(COMMIT) BUILT_AT=$(BUILT_AT) pnpm build
 
 embed: site ## Copy + pre-compress the site into server/dist
 	rm -rf server/dist && mkdir -p server/dist

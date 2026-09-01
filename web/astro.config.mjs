@@ -41,6 +41,12 @@ export default defineConfig({
     },
   },
 
+  markdown: {
+    // Shiki styles tokens inline, which a hash-based CSP rejects. Prism emits
+    // classes instead, so the theme lives in our own stylesheet.
+    syntaxHighlight: 'prism',
+  },
+
   integrations: [react(), sitemap()],
 
   vite: {

@@ -1,9 +1,53 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import WorkRow from '../components/WorkRow.astro';
+
+const work = (await getCollection('work', ({ data }) => !data.draft)).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+// Kept out of the markup so anchor text can sit flush against its tags --
+// a newline inside <a> renders as an underlined trailing space.
+const link = 'underline underline-offset-4 hover:text-[var(--color-text)]';
 ---
 
-<BaseLayout title="hello" description="Phase 0 deploy check.">
-  <main class="grid min-h-dvh place-items-center">
-    <h1 class="font-mono text-2xl text-[var(--color-accent)]">hello</h1>
-  </main>
+<BaseLayout
+  title="Pawan"
+  description="I build systems that hold up under load. Self-hosted on one VPS, with the numbers published."
+>
+  <section class="pt-10 pb-4">
+    <h1 class="max-w-[16ch] text-[length:var(--text-display)]">
+      I build systems that hold up under load.
+    </h1>
+
+    <p class="mt-8 max-w-[var(--measure)] text-[length:var(--text-lead)] text-[var(--color-muted)]">
+      Backend and infrastructure, mostly Go. Everything I run is self-hosted on a
+      single VPS — including this site, which is a static build compiled into a
+      Go binary and served from a container with nothing else in it.
+    </p>
+
+    <p class="mt-5 max-w-[var(--measure)] text-[var(--color-muted)]">
+      Rather than claim any of that is fast, the <a href="/perf/" class={link}>measurements page</a> publishes
+      what real visitors actually experience.
+    </p>
+  </section>
+
+  <section class="mt-20" aria-labelledby="work-heading">
+    <h2 id="work-heading" class="font-mono text-xs font-normal tracking-[0.14em] text-[var(--color-muted)] uppercase">
+      Selected work
+    </h2>
+
+    <ul class="mt-4 list-none p-0">
+      {work.map((entry) => (
+        <WorkRow
+          href={`/work/${entry.id}/`}
+          title={entry.data.title}
+          summary={entry.data.summary}
+          year={entry.data.year}
+          stack={entry.data.stack}
+        />
+      ))}
+    </ul>
+  </section>
 </BaseLayout>

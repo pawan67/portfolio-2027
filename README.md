@@ -48,8 +48,33 @@ Enforced in CI by `scripts/check-budget.sh`; the build fails when a budget is bl
 | Budget | Limit | Why |
 |---|---|---|
 | HTML, brotli | 14 KB | fits the initial congestion window — one round trip |
-| CSS per page | 10 KB | inlined, so it is paid on every document |
+| CSS per page, brotli | 6 KB | inlined, so it is paid on every document |
+| CSS per page, raw | 16 KB | guards parse cost and unbounded growth |
 | JS on the landing page | 0 bytes | islands are opt-in and deferred |
+
+The CSS budget started at 10 KB uncompressed and was revised upward once the
+design system existed: Tailwind's preflight is ~4.3 KB and the theme layer
+~1.2 KB before a single utility is emitted, so 10 KB was below the floor. The
+compressed figure is the tighter and more meaningful guard — it is what
+visitors actually pay.
+
+## Typography
+
+One display face, [Instrument Serif](https://fonts.google.com/specimen/Instrument+Serif),
+latin subset, 21 KB, preloaded. Body text uses the system sans stack and costs
+nothing.
+
+The fallback is metric-matched from measured values rather than estimated, so
+the swap when the webfont lands does not move anything:
+
+| | Instrument Serif | Times New Roman |
+|---|---|---|
+| avg lowercase advance | 0.3922 em | 0.4593 em |
+| unitsPerEm | 1000 | — |
+| ascent / descent | 990 / −310 | — |
+
+That gives `size-adjust: 85.39%`, `ascent-override: 99%`, `descent-override: 31%`.
+Times metrics were read from Liberation Serif, which is metric-compatible with it.
 
 Navigation is instant without a SPA: a declarative `<script type="speculationrules">`
 block prerenders on hover (parsed, never executed) and native CSS
