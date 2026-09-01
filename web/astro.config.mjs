@@ -4,6 +4,21 @@ import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
 // Set SITE_URL at build time. Sitemap + canonical URLs depend on it.
+//
+// An empty string is a misconfiguration rather than "unset", and has to be
+// caught separately: CI passes `SITE_URL=${{ vars.SITE_URL }}` as a build arg,
+// so an undefined Actions variable arrives here as '' and overrides the
+// Dockerfile's ARG default. `??` would let that through and Astro would fail
+// with a bare "Invalid URL" pointing at nothing in particular. Falling back
+// silently would be worse -- the build would succeed and bake example.com into
+// every canonical tag and sitemap entry.
+if (process.env.SITE_URL === '') {
+  throw new Error(
+    'SITE_URL is set but empty. In CI, set the SITE_URL repository variable ' +
+      '(Settings -> Secrets and variables -> Actions -> Variables); it is baked ' +
+      'into canonical URLs and the sitemap at build time.',
+  );
+}
 const site = process.env.SITE_URL ?? 'https://example.com';
 
 export default defineConfig({
