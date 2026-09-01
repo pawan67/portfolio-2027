@@ -54,3 +54,56 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq brotli
           python3 scripts/check-budget.py web/dist
+
+  # Runs against the real binary rather than a static preview, so compression,
+  # cache headers and the embedded-asset path are all exercised.
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache-dependency-path: server/go.mod
+
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq brotli zstd
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+
+      - name: Build site and server
+        run: make build
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          PUBLIC_ORIGIN_URL: ${{ vars.PUBLIC_ORIGIN_URL }}
+
+      - name: Start the origin
+        run: |
+          RUM_DATA=/tmp/rum.json ./bin/server &
+          for i in $(seq 1 50); do
+            curl -sf http://127.0.0.1:8080/healthz >/dev/null && exit 0
+            sleep 0.2
+          done
+          echo "server did not come up"; exit 1
+
+      - name: Audit the running origin
+        run: python3 scripts/audit.py http://127.0.0.1:8080
+
+      - name: Lighthouse
+        run: npx --yes @lhci/cli@latest autorun
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-report
+          path: lhci-report/
+          retention-days: 30

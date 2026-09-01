@@ -66,6 +66,12 @@ services:
       - traefik.http.routers.portfolio.entrypoints=websecure
       - traefik.http.routers.portfolio.tls.certresolver=letsencrypt
       - traefik.http.services.portfolio.loadbalancer.server.port=8080
+      # Grey-clouded hostname for the /perf edge-versus-origin comparison. It
+      # bypasses Cloudflare, so Traefik has to terminate TLS for it directly.
+      - traefik.http.routers.portfolio-origin.rule=Host(`origin.${DOMAIN}`)
+      - traefik.http.routers.portfolio-origin.entrypoints=websecure
+      - traefik.http.routers.portfolio-origin.tls.certresolver=letsencrypt
+      - traefik.http.routers.portfolio-origin.service=portfolio
       # Traefik must not re-compress: bodies are already brotli/zstd from disk.
       - traefik.http.services.portfolio.loadbalancer.passhostheader=true
 

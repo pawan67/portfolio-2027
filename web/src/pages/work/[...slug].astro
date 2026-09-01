@@ -35,13 +35,14 @@ const { title, summary, year, stack, role, repo, live } = entry.data;
           <dt class="text-[var(--color-muted)]">Stack</dt>
           <dd class="mt-1 ml-0">{stack.join(' · ')}</dd>
         </div>
-        {(repo || live) && (
-          <div class="col-span-2 flex gap-4 sm:col-span-4">
-            {repo && <a href={repo} class="underline underline-offset-4">Source</a>}
-            {live && <a href={live} class="underline underline-offset-4">Live</a>}
-          </div>
-        )}
       </dl>
+
+      {(repo || live) && (
+        <p class="mt-4 flex gap-4 font-mono text-xs">
+          {repo && <a href={repo} class="underline underline-offset-4">Source</a>}
+          {live && <a href={live} class="underline underline-offset-4">Live</a>}
+        </p>
+      )}
     </header>
 
     <div class="prose mt-14">

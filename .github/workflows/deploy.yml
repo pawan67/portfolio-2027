@@ -80,3 +80,8 @@ jobs:
             sleep 10
           done
           echo "deploy did not go live within 300s"; exit 1
+
+      # A green deploy should mean the production origin still behaves the way
+      # the repo says it does, not merely that the container started.
+      - name: Audit production
+        run: python3 scripts/audit.py "${{ vars.SITE_URL }}"

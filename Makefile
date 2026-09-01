@@ -48,6 +48,9 @@ run: build ## Build and serve on :8080
 budget: site ## Check the performance budget against the built site
 	python3 scripts/check-budget.py web/dist
 
+audit: ## Audit a running deployment (make audit URL=https://example.com)
+	python3 scripts/audit.py $(or $(URL),http://localhost:8080)
+
 test: ## Run Go tests
 	cd server && go test ./...
 

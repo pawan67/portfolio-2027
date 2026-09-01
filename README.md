@@ -172,18 +172,36 @@ Docker build always compresses.
 ## Deploying
 
 Push to `main`. CI builds the image off the VPS, pushes to GHCR, calls the Dokploy
-webhook, purges the Cloudflare edge, then polls `/api/build` until the live commit
-matches the one it just pushed — so a green deploy job means the bytes are actually
-being served, not merely that the push succeeded.
+webhook, purges the Cloudflare edge, polls `/api/build` until the live commit
+matches the one it just pushed, then audits production. A green deploy means the
+bytes being served are the ones just built *and* that they are being served
+correctly — not merely that the push succeeded.
 
-Required repository configuration:
+Full setup, including the Cloudflare settings that will silently break the
+hash-based CSP if left on, is in [docs/DEPLOY.md](docs/DEPLOY.md).
 
-| Kind | Name |
-|---|---|
-| variable | `SITE_URL` |
-| secret | `DOKPLOY_WEBHOOK_URL` |
-| secret | `CLOUDFLARE_ZONE_ID` |
-| secret | `CLOUDFLARE_API_TOKEN` |
+## Verifying a deployment
+
+```sh
+make audit URL=https://example.com
+```
+
+`scripts/audit.py` checks a running deployment against what this repository claims
+about it: encoding negotiation and that the smallest variant wins, `ETag` varying
+by encoding, conditional requests, immutable caching on hashed assets and fonts
+but not HTML, security headers, a hash-based CSP with no `unsafe-inline`,
+speculation rules that actually parse, no render-blocking scripts, every API
+endpoint, and — against production — TLS, HTTP/2 or HTTP/3, 103 Early Hints, and
+the HTTPS redirect.
+
+It is read-only, so it is safe against a host shared with other services. Checks
+that cannot apply are skipped rather than quietly passed. It runs in CI against
+the real binary on every push, and against production after every deploy.
+
+There is deliberately no Terraform and no Ansible hardening playbook: this VPS
+already existed and already runs other services, so tooling that assumes it owns
+the machine is the wrong shape. The reasoning is written out in
+[docs/DEPLOY.md](docs/DEPLOY.md#why-there-is-no-terraform).
 
 ## Known gaps
 
