@@ -1,7 +1,9 @@
 node_modules/
-dist/
 .astro/
-bin/
+/bin/
+/web/dist/
+# Populated by the build. The directory must exist in a fresh clone or
+# //go:embed all:dist fails to compile, so .gitkeep is tracked.
 server/dist/*
 !server/dist/.gitkeep
 .env
