@@ -1,0 +1,54 @@
+# Deployed by Dokploy in Compose mode, so the service definition lives in git
+# rather than in Dokploy's database. Dokploy supplies DOMAIN and TAG.
+services:
+  web:
+    image: ${IMAGE:-ghcr.io/pawan67/portfolio-2027}:${TAG:-latest}
+
+    environment:
+      PORT: "8080"
+
+    healthcheck:
+      # The image is `scratch`; the binary probes itself.
+      test: ["CMD", "/server", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+
+    deploy:
+      replicas: 2
+      update_config:
+        # start-first is what makes a deploy zero-downtime: the new task must
+        # pass its healthcheck before the old one is stopped.
+        order: start-first
+        parallelism: 1
+        delay: 5s
+        failure_action: rollback
+      rollback_config:
+        order: start-first
+        parallelism: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 64M
+        reservations:
+          memory: 16M
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.portfolio.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.portfolio.entrypoints=websecure
+      - traefik.http.routers.portfolio.tls.certresolver=letsencrypt
+      - traefik.http.services.portfolio.loadbalancer.server.port=8080
+      # Traefik must not re-compress: bodies are already brotli/zstd from disk.
+      - traefik.http.services.portfolio.loadbalancer.passhostheader=true
+
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true

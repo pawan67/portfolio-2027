@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.git
+**/.astro
+server/dist
+infra/
+.github/
+*.md

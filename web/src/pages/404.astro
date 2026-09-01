@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="404" description="That page does not exist.">
+  <main class="grid min-h-dvh place-items-center gap-4 text-center">
+    <div>
+      <p class="font-mono text-sm text-[var(--color-muted)]">404</p>
+      <h1 class="mt-2 text-xl">Nothing here.</h1>
+      <a class="mt-6 inline-block font-mono text-sm text-[var(--color-accent)] underline underline-offset-4" href="/">
+        go home
+      </a>
+    </div>
+  </main>
+</BaseLayout>

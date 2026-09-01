@@ -1,0 +1,45 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Set on the one page-level image that is the LCP element, if any. */
+  ogImage?: string;
+}
+
+const { title, description, ogImage } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <meta name="theme-color" content="#0d1117" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {ogImage && <meta property="og:image" content={new URL(ogImage, Astro.site).href} />}
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    {/* Declarative prerender-on-hover. Parsed, not executed: 0KB of JS.
+        Safe here because every route is a static document with no side effects. */}
+    <script type="speculationrules">
+      {JSON.stringify({
+        prerender: [{ where: { href_matches: '/*' }, eagerness: 'moderate' }],
+      })}
+    </script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
