@@ -19,6 +19,10 @@ type Report = {
   countries: { country: string; samples: number; lcpP75: number; rating: string }[];
 };
 
+// Kept in step with metricNames in pages/perf.astro, which server-renders the
+// skeleton these rows replace, and with rum.Metrics, which fixes the order.
+const METRICS = ['LCP', 'INP', 'CLS', 'TTFB', 'FCP'];
+
 const fmt = (value: number, unit: string) =>
   unit === 'ms' ? `${Math.round(value)}ms` : value.toFixed(3);
 
@@ -35,34 +39,42 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function ratingDot(rating: string) {
+function ratingDot(rating?: string) {
   const dot = el('span', 'perf-dot');
-  dot.dataset.rating = rating;
+  // No rating leaves the dot at its default muted fill, which is what "no
+  // samples yet" should look like.
+  if (rating) dot.dataset.rating = rating;
   dot.setAttribute('role', 'img');
-  dot.setAttribute('aria-label', rating.replace('-', ' '));
+  dot.setAttribute('aria-label', rating ? rating.replace('-', ' ') : 'no data');
   return dot;
 }
 
 function renderMetrics(report: Report, into: HTMLElement) {
-  into.replaceChildren();
+  const summaries = new Map(report.metrics.map((m) => [m.metric, m]));
+  const rows: HTMLElement[] = [];
 
-  for (const m of report.metrics) {
+  for (const name of METRICS) {
+    const m = summaries.get(name);
     const row = el('div', 'perf-row');
 
     const head = el('div', 'perf-row-head');
-    head.append(ratingDot(m.rating), el('span', 'perf-name', m.metric));
-    head.append(el('span', 'perf-value', fmt(m.p75, m.unit)));
+    head.append(ratingDot(m?.rating), el('span', 'perf-name', name));
+    head.append(el('span', 'perf-value', m ? fmt(m.p75, m.unit) : '—'));
 
     const detail = el(
       'p',
       'perf-detail',
-      `p50 ${fmt(m.p50, m.unit)} · p95 ${fmt(m.p95, m.unit)} · ` +
-        `${pct(m.goodShare)} of samples rated good · ${m.samples.toLocaleString()} samples`,
+      m
+        ? `p50 ${fmt(m.p50, m.unit)} · p95 ${fmt(m.p95, m.unit)} · ` +
+            `${pct(m.goodShare)} of samples rated good · ${m.samples.toLocaleString()} samples`
+        : 'No samples yet.',
     );
 
     row.append(head, detail);
-    into.append(row);
+    rows.push(row);
   }
+
+  into.replaceChildren(...rows);
 }
 
 function renderCountries(report: Report, into: HTMLElement) {

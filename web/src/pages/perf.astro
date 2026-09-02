@@ -11,6 +11,13 @@ const budgets = [
 ];
 
 const hasOriginComparison = Boolean(import.meta.env.PUBLIC_ORIGIN_URL);
+
+// Server-rendered skeleton, same idea as LivePanel: the rows exist before the
+// report arrives, so filling them in moves nothing. rum.Metrics omits metrics
+// with no samples, which is why the page owns this list rather than deriving it
+// from the response -- a metric nobody has triggered yet still gets a row.
+// Kept in step with METRICS in scripts/perf.ts, which rebuilds these rows.
+const metricNames = ['LCP', 'INP', 'CLS', 'TTFB', 'FCP'];
 ---
 
 <BaseLayout
@@ -36,16 +43,34 @@ const hasOriginComparison = Boolean(import.meta.env.PUBLIC_ORIGIN_URL);
         Field data
       </h2>
 
-      <p class="mt-3 max-w-[var(--measure)] text-sm text-[var(--color-muted)]" data-field-summary>
+      {/* Two lines reserved: the loaded summary is longer than the placeholder
+          and wraps at this measure. */}
+      <p
+        class="mt-3 min-h-[2lh] max-w-[var(--measure)] text-sm text-[var(--color-muted)]"
+        data-field-summary
+      >
         Loading measurements…
       </p>
 
-      <div class="mt-6" data-metrics></div>
+      <div class="mt-6" data-metrics>
+        {metricNames.map((name) => (
+          <div class="perf-row">
+            <div class="perf-row-head">
+              <span class="perf-dot" role="img" aria-label="no data"></span>
+              <span class="perf-name">{name}</span>
+              <span class="perf-value">—</span>
+            </div>
+            <p class="perf-detail">No samples yet.</p>
+          </div>
+        ))}
+      </div>
 
       <h3 class="mt-12 font-mono text-xs font-normal tracking-[0.14em] text-[var(--color-muted)] uppercase">
         Largest Contentful Paint by region
       </h3>
-      <div class="mt-4" data-countries></div>
+      <div class="mt-4" data-countries>
+        <p class="perf-note">Not enough regions yet to make a comparison meaningful.</p>
+      </div>
 
       <p class="mt-8 max-w-[var(--measure)] text-sm text-[var(--color-muted)]">
         Collected first-party from real visits. No cookies, no identifiers, no
