@@ -18,6 +18,7 @@ const work = (await getCollection('work', ({ data }) => !data.draft)).sort(
     <ul class="mt-10 list-none p-0">
       {work.map((entry) => (
         <WorkRow
+          level={2}
           href={`/work/${entry.id}/`}
           title={entry.data.title}
           summary={entry.data.summary}

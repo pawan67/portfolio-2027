@@ -5,17 +5,22 @@ interface Props {
   summary: string;
   year: number;
   stack: string[];
+  /* /work/ lists rows directly under its h1; the home page nests them under a
+     "Selected work" h2. The row has to be told which, or one of the two pages
+     skips a level. */
+  level?: 2 | 3;
 }
 
-const { href, title, summary, year, stack } = Astro.props;
+const { href, title, summary, year, stack, level = 3 } = Astro.props;
+const Heading = `h${level}` as 'h2' | 'h3';
 ---
 
-<li class="border-t border-[var(--color-line)]">
-  <a href={href} class="group block py-6 no-underline">
+<li class="work-row">
+  <a href={href} class="group block">
     <div class="flex items-baseline justify-between gap-4">
-      <h3 class="font-display text-2xl normal-case tracking-tight text-[var(--color-text)] group-hover:text-[var(--color-accent)]">
-        {title}
-      </h3>
+      <Heading class="font-display text-2xl normal-case tracking-tight">
+        {title}<span class="work-arrow" aria-hidden="true">→</span>
+      </Heading>
       <span class="shrink-0 font-mono text-xs text-[var(--color-muted)]">{year}</span>
     </div>
 

@@ -52,18 +52,47 @@
   --text-lead: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);
 
   --measure: 34rem;
+
+  /* One curve for the whole site. The built-in ease-out is too weak to read as
+     intentional; this one moves immediately, which is the frame the eye is
+     actually watching. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @view-transition {
   navigation: auto;
 }
 
+/* Navigation is prerendered on hover, so the crossfade is the only thing
+   standing between two documents -- the UA's symmetric 250ms reads as lag it
+   did not have to pay. Asymmetric instead: the old page leaves quickly, the new
+   one is given room to arrive. No transform, because the root snapshot is the
+   entire viewport and moving it would move the header with it. */
+::view-transition-old(root) {
+  animation: 90ms var(--ease-out) both vt-exit;
+}
+::view-transition-new(root) {
+  animation: 200ms var(--ease-out) both vt-enter;
+}
+@keyframes vt-exit {
+  to { opacity: 0; }
+}
+@keyframes vt-enter {
+  from { opacity: 0; }
+}
+
 @layer base {
   html {
     background: var(--color-bg);
     color: var(--color-text);
+    /* Without this the scrollbar and every native control render light against
+       an off-black page. */
+    color-scheme: dark;
     font-family: var(--font-sans);
-    font-size: 17px;
+    /* 17/16 as a percentage rather than 17px: a reader who raised their
+       browser's base size still gets it scaled, and every rem below -- the
+       measure included -- scales with them. */
+    font-size: 106.25%;
     line-height: 1.6;
     -webkit-text-size-adjust: 100%;
     scrollbar-gutter: stable;
@@ -74,7 +103,6 @@
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
-    text-rendering: optimizeLegibility;
   }
 
   h1, h2, h3 {
@@ -85,8 +113,22 @@
     text-wrap: balance;
   }
 
+  /* Tracking is optical, not fixed: the larger the face sets, the tighter it
+     wants to be. -0.015em is right at 28px and visibly loose at 93px. */
+  h1 {
+    letter-spacing: -0.025em;
+  }
+
   p {
     text-wrap: pretty;
+  }
+
+  a,
+  button {
+    transition: color 140ms var(--ease-out),
+      border-color 140ms var(--ease-out),
+      background-color 140ms var(--ease-out),
+      text-decoration-color 140ms var(--ease-out);
   }
 
   a {
@@ -104,16 +146,104 @@
     color: var(--color-bg);
   }
 
+  /* Reduced motion means gentler, not none. Colour and opacity still
+     transition -- they carry meaning. Everything that moves in space stops. */
   @media (prefers-reduced-motion: reduce) {
     ::view-transition-group(*),
     ::view-transition-old(*),
     ::view-transition-new(*) {
       animation: none !important;
     }
+    .work-arrow,
+    .btn:active {
+      transform: none !important;
+    }
   }
 }
 
 @layer components {
+  /* Primary navigation. Brightness alone is a weak "you are here" at this size,
+     so the current page also carries a hairline in the accent. */
+  .nav-link {
+    color: var(--color-muted);
+    text-decoration: none;
+  }
+  .nav-link[aria-current="page"] {
+    color: var(--color-text);
+    text-decoration: underline;
+    text-decoration-color: var(--color-accent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 7px;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .nav-link:hover { color: var(--color-text); }
+  }
+
+  /* The whole row is the click target, but until it acknowledged the pointer as
+     one object nothing said so. The wash bleeds past the text column into the
+     gutter so the row reads as a slab rather than a paragraph that happens to
+     be a link. */
+  .work-row {
+    border-top: 1px solid var(--color-line);
+  }
+  .work-row > a {
+    display: block;
+    margin-inline: -0.9rem;
+    padding: 1.5rem 0.9rem;
+    border-radius: 5px;
+    text-decoration: none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .work-row > a:hover { background: oklch(0.235 0.008 60); }
+    /* Hidden until hover only where there is a pointer. On touch it stays
+       visible at rest -- a permanent affordance beats one nobody can trigger. */
+    .work-arrow {
+      opacity: 0;
+      transform: translateX(-0.3em);
+    }
+    a:hover .work-arrow {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .work-arrow {
+    display: inline-block;
+    margin-left: 0.3em;
+    color: var(--color-accent);
+    transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--color-line);
+    border-radius: 5px;
+    background: transparent;
+    padding: 0.55rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    color: var(--color-text);
+    cursor: pointer;
+    /* transform is listed here rather than inherited from the base a/button
+       rule, which deliberately omits it. */
+    transition: transform 140ms var(--ease-out),
+      border-color 140ms var(--ease-out),
+      color 140ms var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn:hover:not(:disabled) {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .btn:disabled {
+    cursor: wait;
+    opacity: 0.6;
+  }
+
   .live-value {
     margin: 0.35rem 0 0.15rem;
     font-family: var(--font-display);
@@ -239,6 +369,9 @@
   .prose h3 {
     font-family: var(--font-sans);
     font-size: 1rem;
+    /* Overridden to small uppercase sans, so it must not keep the 1.05 display
+       leading it inherits -- that cramps the moment it wraps. */
+    line-height: 1.3;
     font-weight: 600;
     letter-spacing: 0.02em;
     text-transform: uppercase;

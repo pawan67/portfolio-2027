@@ -21,7 +21,7 @@ const isCurrent = (href: string) =>
           <a
             href={href}
             aria-current={isCurrent(href) ? 'page' : undefined}
-            class="no-underline text-[var(--color-muted)] hover:text-[var(--color-text)] aria-[current=page]:text-[var(--color-text)]"
+            class="nav-link"
           >
             {label}
           </a>
