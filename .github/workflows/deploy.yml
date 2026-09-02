@@ -40,6 +40,9 @@ jobs:
         with:
           context: .
           push: true
+          # The VPS is arm64; the runner is amd64. Without this the image builds
+          # for the runner and dies on the target with "exec format error".
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
