@@ -4,6 +4,12 @@ services:
   web:
     image: ${IMAGE:-ghcr.io/pawan67/portfolio-2027}:${TAG:-latest}
 
+    # `docker compose up` reuses a tag it already holds locally, so redeploying
+    # :latest silently kept serving the previous image -- including, once, an
+    # amd64 one on this arm64 host. CI moves :latest on every push, so the local
+    # copy is exactly the thing that must not be trusted.
+    pull_policy: always
+
     environment:
       PORT: "8080"
       RUM_DATA: /data/rum.json
