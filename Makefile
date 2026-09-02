@@ -21,17 +21,24 @@ site: ## Build the static site
 	cd web && SITE_URL=$(SITE_URL) COMMIT=$(COMMIT) BUILT_AT=$(BUILT_AT) \
 	  PUBLIC_ORIGIN_URL=$(PUBLIC_ORIGIN_URL) pnpm build
 
+# `find -exec` rather than `-print0 | while read -d ''`: `read -d` is a bash
+# extension, and make runs recipes under /bin/sh, which is dash on Ubuntu. There
+# the loop failed while the success message still printed, so CI built an
+# uncompressed site and reported that it had compressed one.
 embed: site ## Copy + pre-compress the site into server/dist
-	rm -rf server/dist && mkdir -p server/dist
+	# .gitkeep is tracked so `go build` works in a fresh clone, where dist is
+	# otherwise empty and //go:embed all:dist has nothing to match. Recreate it
+	# here or every local build shows up as deleting a tracked file.
+	rm -rf server/dist && mkdir -p server/dist && touch server/dist/.gitkeep
 	cp -R web/dist/. server/dist/
 	@if command -v brotli >/dev/null && command -v zstd >/dev/null; then \
-	  find server/dist -type f \( $(COMPRESSIBLE) \) -size +512c -print0 \
-	  | while IFS= read -r -d '' f; do \
-	      brotli -q 11 -c "$$f" > "$$f.br"; \
-	      zstd -19 -q -c "$$f" > "$$f.zst"; \
-	      gzip -9 -c "$$f" > "$$f.gz"; \
-	    done; \
-	  echo "pre-compressed br/zstd/gzip"; \
+	  find server/dist -type f \( $(COMPRESSIBLE) \) -size +512c \
+	    -exec sh -c 'for f in "$$@"; do \
+	        brotli -q 11 -c "$$f" > "$$f.br"; \
+	        zstd -19 -q -c "$$f" > "$$f.zst"; \
+	        gzip -9 -c "$$f" > "$$f.gz"; \
+	      done' _ {} +; \
+	  echo "pre-compressed $$(find server/dist -name '*.br' | wc -l) files as br/zstd/gzip"; \
 	else \
 	  echo "brotli/zstd not installed - serving identity only (Docker build still compresses)"; \
 	fi
