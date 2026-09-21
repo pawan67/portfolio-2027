@@ -1,0 +1,67 @@
+---
+interface Props {
+  company: string;
+  role: string;
+  /** `YYYY-MM`. */
+  start: string;
+  /** `YYYY-MM`, or omitted for the current role. */
+  end?: string;
+  location: string;
+  url?: string;
+  stack: string[];
+}
+
+const { company, role, start, end, location, url, stack } = Astro.props;
+
+/* Formatted from the string rather than through `new Date(...)` and
+   `toLocaleString`. "2024-01" parses as UTC midnight, which renders as December
+   2023 anywhere west of Greenwich -- and the CI container's locale data is not
+   the one the site was written against. A lookup table cannot drift. */
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+const label = (ym: string) => {
+  const [year, month] = ym.split('-');
+  return `${MONTHS[Number(month) - 1]} ${year}`;
+};
+
+---
+
+{/* .work-row is reused for its hairline; the padding it normally gets from
+    the anchor inside it is applied here instead, since nothing in an
+    experience entry is a whole-row link target. */}
+<li class="work-row py-6">
+  <div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+    <h3 class="font-display text-2xl normal-case tracking-tight">
+      {url ? <a href={url} class="underline underline-offset-4">{company}</a> : company}
+    </h3>
+
+    {/* Two <time> elements rather than one carrying a range: `datetime` takes a
+        single date or a duration, so "2022-08/2023-02" is not a value the
+        attribute has -- it would parse as nothing at all. */}
+    <span class="shrink-0 font-mono text-xs text-[var(--color-muted)]">
+      <time datetime={start}>{label(start)}</time> — {
+        end ? <time datetime={end}>{label(end)}</time> : 'Present'
+      }
+    </span>
+  </div>
+
+  <p class="mt-1 text-[var(--color-muted)]">
+    {role} · {location}
+  </p>
+
+  {/* .prose carries the markdown body's list and spacing rules. Safe here
+      because an entry body is bullets only -- .prose restyles h3, and the
+      company name above is one. */}
+  <div class="prose mt-4">
+    <slot />
+  </div>
+
+  {stack.length > 0 && (
+    <p class="mt-4 font-mono text-xs text-[var(--color-muted)]">
+      {stack.join(' · ')}
+    </p>
+  )}
+</li>

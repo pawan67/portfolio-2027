@@ -48,6 +48,10 @@ export default defineConfig({
         "img-src 'self' data:",
         "font-src 'self'",
         "connect-src 'self'",
+        // The now-playing sample. 'self' is enough because the origin proxies
+        // the audio rather than pointing <audio> at Apple's CDN -- without
+        // this it falls back to default-src 'none' and never plays.
+        "media-src 'self'",
         "base-uri 'none'",
         "form-action 'none'",
         "manifest-src 'self'",

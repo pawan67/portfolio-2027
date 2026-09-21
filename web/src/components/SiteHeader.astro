@@ -1,4 +1,6 @@
 ---
+import { person } from '../data/site';
+
 const { pathname } = Astro.url;
 
 const links = [
@@ -12,7 +14,7 @@ const isCurrent = (href: string) =>
 ---
 
 <header class="mx-auto flex w-full max-w-3xl items-baseline justify-between px-6 py-8">
-  <a href="/" class="font-display text-lg tracking-tight no-underline">Pawan</a>
+  <a href="/" class="font-display text-lg tracking-tight no-underline">{person.short}</a>
 
   <nav aria-label="Primary">
     <ul class="flex list-none gap-6 p-0 text-sm">

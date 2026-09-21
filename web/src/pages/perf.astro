@@ -7,7 +7,7 @@ const budgets = [
   { name: 'CSS per page, brotli', limit: '6 KB', why: 'inlined, so it is paid on every document' },
   { name: 'Render-blocking JS', limit: '0 bytes', why: 'the only script is deferred and measures this page' },
   { name: 'Deferred JS', limit: '4 KB brotli', why: 'field measurement is not free, but it is bounded' },
-  { name: 'Fonts', limit: '21 KB', why: 'one display face, metric-matched fallback, CLS 0' },
+  { name: 'Fonts', limit: '38 KB', why: 'two faces — Instrument Serif for headings, Geist 400-500 for text — each with a measured fallback' },
 ];
 
 const hasOriginComparison = Boolean(import.meta.env.PUBLIC_ORIGIN_URL);

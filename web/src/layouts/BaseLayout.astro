@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
+import { person } from '../data/site';
 
 interface Props {
   title: string;
@@ -11,7 +12,8 @@ interface Props {
 
 const { title, description, ogImage } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
-const fullTitle = Astro.url.pathname === '/' ? title : `${title} — Pawan`;
+const fullTitle =
+  Astro.url.pathname === '/' ? title : `${title} — ${person.short}`;
 ---
 
 <!doctype html>
@@ -23,9 +25,12 @@ const fullTitle = Astro.url.pathname === '/' ? title : `${title} — Pawan`;
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
 
-    {/* The only render-critical subresource. Stable filename so it can be
-        preloaded without knowing a build hash; versioned so it stays
-        immutably cacheable. */}
+    {/* The two render-critical subresources. Every route puts an h1 and body
+        copy above the fold, so both faces are discovered late without this and
+        both cost a visible swap. The serif is listed first: it sets the h1,
+        which is the LCP element on every page, so it must not wait.
+        Stable filenames so they can be preloaded without knowing a build hash;
+        versioned so they stay immutably cacheable. */}
     <link
       rel="preload"
       href="/fonts/instrument-serif-v1.woff2"
@@ -33,17 +38,33 @@ const fullTitle = Astro.url.pathname === '/' ? title : `${title} — Pawan`;
       type="font/woff2"
       crossorigin
     />
+    <link
+      rel="preload"
+      href="/fonts/geist-sans-v1.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
 
+    {/* Kept in step with --color-bg by hand; it is the one colour the CSS
+        cannot reach, because the browser paints the chrome before it parses. */}
     <meta name="theme-color" content="#131211" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Pawan" />
+    <meta property="og:site_name" content={person.short} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     {ogImage && <meta property="og:image" content={new URL(ogImage, Astro.site).href} />}
     <meta name="twitter:card" content="summary_large_image" />
 
+    {/* Cut from design/brand/final by `build.py --ship`. The tab icon is the
+        stacked square cut, not the horizontal P67 lockup: a 16px slot gives the
+        lockup 64% of its height in a box it does not fit, and it goes to mush.
+        The .ico is listed first but only legacy browsers take it -- everything
+        current prefers the SVG and stops there. */}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="sitemap" href="/sitemap-index.xml" />
 
     {/* Declarative prerender-on-hover. Parsed, never executed: 0KB of JS.
@@ -61,6 +82,9 @@ const fullTitle = Astro.url.pathname === '/' ? title : `${title} — Pawan`;
         collect. */}
     <script>
       import '../scripts/vitals.ts';
+      // Bundled with the beacon rather than emitted as its own module: one
+      // request, and two small files share a compression context.
+      import '../scripts/listening.ts';
     </script>
   </head>
 

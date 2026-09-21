@@ -22,6 +22,7 @@ import (
 
 	"github.com/pawan67/portfolio-2027/server/internal/assets"
 	"github.com/pawan67/portfolio-2027/server/internal/buildinfo"
+	"github.com/pawan67/portfolio-2027/server/internal/listening"
 	"github.com/pawan67/portfolio-2027/server/internal/metrics"
 	"github.com/pawan67/portfolio-2027/server/internal/rum"
 )
@@ -89,6 +90,15 @@ func run(log *slog.Logger) error {
 	counter := &metrics.Counter{}
 	hub := metrics.NewHub(collector, counter, metricsInterval, metricsMaxListeners)
 
+	// Both empty by default. Without credentials the poller never runs and the
+	// endpoints answer 204, which the footer reads as "take yourself off the
+	// page" -- so an unconfigured deployment simply has no now-playing line.
+	nowPlaying := listening.New(
+		os.Getenv("LASTFM_USER"),
+		os.Getenv("LASTFM_API_KEY"),
+		log,
+	)
+
 	info := buildinfo.Get(runtime.Version())
 	mux := http.NewServeMux()
 
@@ -107,6 +117,9 @@ func run(log *slog.Logger) error {
 	mux.Handle("POST /api/rum", rum.Ingest(store, time.Now))
 	mux.Handle("GET /api/perf", rum.Serve(store, time.Now))
 	mux.Handle("GET /api/metrics/stream", metrics.Stream(hub))
+
+	mux.Handle("GET /api/listening", listening.Serve(nowPlaying))
+	mux.Handle("GET /api/listening/preview/{clip}", listening.Preview(nowPlaying))
 
 	// Lets the perf page time this origin directly and compare it against the
 	// same request served through Cloudflare.
@@ -131,6 +144,7 @@ func run(log *slog.Logger) error {
 
 	go flushLoop(ctx, log, store)
 	go hub.Run(ctx)
+	go nowPlaying.Run(ctx)
 
 	// Bind before logging success, so a failed bind never emits "listening".
 	ln, err := net.Listen("tcp", addr)
@@ -142,6 +156,7 @@ func run(log *slog.Logger) error {
 		"addr", addr,
 		"commit", info.ShortCommit,
 		"routes", len(site.Routes()),
+		"nowPlaying", nowPlaying.Enabled(),
 	)
 
 	errCh := make(chan error, 1)

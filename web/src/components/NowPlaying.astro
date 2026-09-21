@@ -1,0 +1,24 @@
+---
+/* Footer now-playing line.
+ *
+ * Rendered empty and hidden. The script fills it from /api/listening, or
+ * removes it outright when the origin answers 204 -- a deployment without
+ * Last.fm credentials should have no row at all rather than a dead one.
+ *
+ * Safe to insert late despite being script-driven: it is the last element in
+ * the document, so appearing shifts nothing that has already been painted.
+ */
+---
+
+<p class="now-playing" data-now-playing hidden>
+  <span class="np-label" data-np-label></span>
+  <a class="np-track" data-np-link rel="noopener"></a>
+
+  {/* Hidden until a sample is actually resolved. iTunes has no preview for
+      every track, and a play control that cannot play is worse than none. */}
+  <button class="np-play" type="button" data-np-play hidden></button>
+
+  {/* preload="none" so a footer nobody scrolls to costs zero bytes of audio.
+      src is set by the script; an empty src here would fetch the page itself. */}
+  <audio data-np-audio preload="none"></audio>
+</p>

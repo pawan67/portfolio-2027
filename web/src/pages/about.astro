@@ -1,38 +1,85 @@
 ---
+import { getCollection, render } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ExperienceRow from '../components/ExperienceRow.astro';
+import { person, socials } from '../data/site';
+
+/* Newest first. `start` is YYYY-MM, so a string compare is a date compare and
+   there is no Date object to get a timezone wrong. */
+const experience = (await getCollection('experience', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.start.localeCompare(a.data.start),
+);
+
+const entries = await Promise.all(
+  experience.map(async (entry) => ({ entry, Content: (await render(entry)).Content })),
+);
+
+/* Repeated on three headings; the homepage sets the same rule for "Selected
+   work", and the two pages should not drift apart. */
+const link = 'underline underline-offset-4 hover:text-[var(--color-text)]';
+
+const sectionHeading =
+  'font-mono text-xs font-normal tracking-[0.14em] text-[var(--color-muted)] uppercase';
 ---
 
 <BaseLayout
   title="About"
-  description="Backend and infrastructure engineer. Self-hosts everything on one VPS."
+  description={`${person.role} in ${person.location}. Full-stack by trade, with a pull toward the layer underneath.`}
 >
   <section class="pt-10">
     <h1 class="text-[length:var(--text-title)]">About</h1>
 
     <div class="prose mt-10">
-      <!-- TODO(pawan): this is scaffolding built from what is verifiable in your
-           repos. Replace it with your own words before this goes live. -->
       <p>
-        I work on backend and infrastructure — mostly Go, with enough React to
-        build the interfaces on top of it. I prefer systems that are boring to
-        operate: one binary, one process, no runtime dependencies to drift.
+        I am a software engineer in {person.location}. Day to day that means
+        full-stack work — Next.js and React in front, Node and Mongo behind it,
+        a headless CMS wherever the people who own the words should not need a
+        deploy to change them.
       </p>
 
       <p>
-        Everything I run lives on a VPS I administer myself, deployed through a
-        self-hosted PaaS rather than a managed platform. That is partly
-        stubbornness and partly the fastest way I know to actually learn how the
-        pieces fit together.
+        What has been pulling at me for a while is the layer underneath: how a
+        thing gets built, shipped, and kept running once nobody is watching it.
+        So I run my own VPS, deploy through a self-hosted PaaS rather than a
+        managed platform, and reach for Go when a service should be one binary
+        with no runtime to drift. This site is the clearest thing I have to show
+        for that.
       </p>
+    </div>
 
-      <h3>How this site is built</h3>
+    <h2 class:list={[sectionHeading, 'mt-20']} id="experience">Experience</h2>
 
+    <ul class="mt-4 list-none p-0">
+      {entries.map(({ entry, Content }) => (
+        <ExperienceRow
+          company={entry.data.company}
+          role={entry.data.role}
+          start={entry.data.start}
+          end={entry.data.end}
+          location={entry.data.location}
+          url={entry.data.url}
+          stack={entry.data.stack}
+        >
+          <Content />
+        </ExperienceRow>
+      ))}
+    </ul>
+
+    <p class="mt-8 font-mono text-xs text-[var(--color-muted)]">
+      <a href={person.resume} class={link}>
+        Full résumé (PDF)
+      </a>
+    </p>
+
+    <h2 class:list={[sectionHeading, 'mt-20']}>How this site is built</h2>
+
+    <div class="prose mt-4">
       <p>
-        The site is a static build compiled into a Go binary and shipped in a
-        container with nothing else in it. The origin serves pre-compressed
-        bytes, picks the encoding by measured size rather than by reputation, and
-        drains cleanly on shutdown so deploys drop nothing. There is no
-        JavaScript on the page you are reading.
+        A static build compiled into a Go binary and shipped in a container with
+        nothing else in it. The origin serves pre-compressed bytes, picks the
+        encoding by measured size rather than by reputation, and drains cleanly
+        on shutdown so deploys drop nothing. There is no JavaScript on the page
+        you are reading.
       </p>
 
       <p>
@@ -40,14 +87,29 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         actually experience, rather than a Lighthouse screenshot taken on a good
         day.
       </p>
-
-      <h3>Elsewhere</h3>
-
-      <!-- TODO(pawan): real links. -->
-      <ul>
-        <li>GitHub — add link</li>
-        <li>Email — add address</li>
-      </ul>
     </div>
+
+    <h2 class:list={[sectionHeading, 'mt-20']}>Elsewhere</h2>
+
+    {/* Same label-over-value grid the work detail pages use for their
+        metadata, deliberately: it is one more instance of an existing pattern
+        rather than a new one, and the raw-CSS budget has under 200 bytes of
+        headroom for anything bespoke. */}
+    <dl class="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-[var(--color-line)] pt-6 font-mono text-xs sm:grid-cols-3">
+      {socials.map(({ label, href, handle }) => (
+        <div>
+          <dt class="text-[var(--color-muted)]">{label}</dt>
+          <dd class="mt-1 ml-0">
+            <a
+              href={href}
+              class="underline underline-offset-4"
+              rel={href.startsWith('mailto:') ? undefined : 'me noopener'}
+            >
+              {handle ?? label}
+            </a>
+          </dd>
+        </div>
+      ))}
+    </dl>
   </section>
 </BaseLayout>

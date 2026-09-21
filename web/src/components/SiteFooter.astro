@@ -1,4 +1,7 @@
 ---
+import { primarySocials } from '../data/site';
+import NowPlaying from './NowPlaying.astro';
+
 // The same COMMIT/BUILT_AT that CI bakes into the Go binary is passed to this
 // build, so the footer and /api/build agree by construction -- no runtime fetch
 // and no JavaScript needed to show what is deployed.
@@ -24,4 +27,25 @@ const link = 'underline underline-offset-4 hover:text-[var(--color-text)]';
       {commit}{deployed && <> · deployed {deployed}</>}
     </p>
   </div>
+
+  {/* Work-relevant links only; the full set lives on /about. A nav rather than
+      a paragraph, so it is reachable as a landmark instead of being three
+      anchors adrift at the end of the document. */}
+  <nav aria-label="Elsewhere" class="mt-5">
+    <ul class="flex list-none flex-wrap gap-x-5 gap-y-1 p-0 text-sm">
+      {primarySocials.map(({ label, href }) => (
+        <li>
+          <a
+            href={href}
+            class={link}
+            rel={href.startsWith('mailto:') ? undefined : 'me noopener'}
+          >
+            {label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+
+  <NowPlaying />
 </footer>

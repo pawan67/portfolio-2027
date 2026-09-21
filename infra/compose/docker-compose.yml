@@ -25,6 +25,14 @@ services:
       # it, mount the narrowest useful path read-only rather than /.
       # METRICS_DISK_PATH: /hostfs
 
+      # Footer now-playing line. Both are optional and both are required
+      # together: without them /api/listening answers 204 and the row removes
+      # itself, so leaving them unset is a supported configuration rather than
+      # a broken one. Set them in Dokploy's environment, not here -- the key
+      # is a credential and this file is in git.
+      LASTFM_USER: "${LASTFM_USER:-}"
+      LASTFM_API_KEY: "${LASTFM_API_KEY:-}"
+
     volumes:
       - rum-data:/data
 

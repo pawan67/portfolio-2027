@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 /* --------------------------------------------------------------------------
-   Display face. Only headings use it, so one weight at 21KB is the whole
-   typographic budget. Body text rides the system stack for free.
+   Instrument Serif sets headings -- the face the deployed site has been
+   wearing since 7b31249. One weight, 20.7KB, subset to Latin (SIL OFL, so
+   unlike some free faces there is no licence bar on subsetting).
    -------------------------------------------------------------------------- */
 @font-face {
   font-family: "Instrument Serif";
@@ -15,18 +16,83 @@
     U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Metric-matched fallback so the swap does not move anything.
-   Measured from the real files, not estimated:
-     Instrument Serif  avg lowercase advance 0.3922em, upm 1000, asc 990, desc -310
-     Times New Roman   avg lowercase advance 0.4593em  (via metric-compatible
-                       Liberation Serif)
-     size-adjust = 0.3922 / 0.4593 = 85.39% */
+/* Metric-matched fallback, re-measured over the 45 real headings in the built
+   pages rather than the flat lowercase mean this file used to carry. That mean
+   said 85.39%; weighting by the copy the site actually sets says 81.38% -- a
+   4pp miss, the same class of error that cost 3.4% of width drift on the Geist
+   swap before it was corrected there too. Instrument Serif is narrow, and a
+   fallback 4pp too wide is a headline that wraps a line early.
+     Instrument Serif  avg advance 0.3380em over the headings, upm 1000,
+                       asc 990, desc -310, lineGap 0 (USE_TYPO_METRICS set)
+     Times New Roman   0.4153em over the same text, via metric-compatible
+                       Liberation Serif
+     size-adjust = 0.3380 / 0.4153 = 81.38%
+   Overrides are the real metrics pre-divided by size-adjust, because
+   size-adjust multiplies every metric back in: 0.990/0.8138, 0.310/0.8138. */
 @font-face {
   font-family: "Instrument Fallback";
+  font-weight: 400;
   src: local("Times New Roman"), local("Times"), local("Liberation Serif");
-  size-adjust: 85.39%;
-  ascent-override: 99%;
-  descent-override: 31%;
+  size-adjust: 81.38%;
+  ascent-override: 121.65%;
+  descent-override: 38.09%;
+  line-gap-override: 0%;
+}
+
+/* --------------------------------------------------------------------------
+   Geist, subset to Latin, sets body text only -- headings are Instrument
+   Serif above. Shipped as a variable font clamped to the 400-500 range the
+   site actually uses: 16.2KB in one request, against 20.8KB in two if the same
+   weights shipped as static cuts. Mono still rides the system stack for free.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Geist";
+  src: url("/fonts/geist-sans-v1.woff2") format("woff2");
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Metric-matched fallback so the swap does not move anything. Weighted by the copy this site actually
+   sets rather than a flat a-z mean. Spaces and punctuation are a large share of
+   running text and Geist proportions them differently to Arial, so the flat mean
+   overshot by 6.5pp and left 3.4% of width drift on the swap:
+     Geist 400  avg advance 0.4357em across the built pages, upm 1000,
+                asc 1005, desc -295
+     Arial      avg advance 0.4248em across the same text (via metric-compatible
+                Liberation Sans)
+     size-adjust = 0.4357 / 0.4248 = 102.55%
+   The ascent/descent overrides are the real metrics pre-divided by size-adjust
+   (1.005 / 1.0255, 0.295 / 1.0255), because size-adjust multiplies every metric
+   back in -- overriding to a raw 100.5% would land at 103.1%. */
+@font-face {
+  font-family: "Geist Fallback";
+  font-weight: 400;
+  src: local("Arial"), local("Helvetica"), local("Liberation Sans");
+  size-adjust: 102.55%;
+  ascent-override: 98%;
+  descent-override: 28.77%;
+  line-gap-override: 0%;
+}
+
+/* A second cut for the 500 weight. One scalar cannot serve both: Geist puts
+   real width on at 500 while the local fallback stays regular, so a fallback
+   tuned on body copy renders the heavier line ~4% narrow -- measured as a 98px
+   shift on the home page before this existed. Same method, over heading text:
+     Geist 500  avg advance 0.4989em, Arial 0.4668em -> 106.87%
+   Since Instrument Serif took the headings, the only thing left at Geist 500 is
+   `.prose h3` -- small letterspaced uppercase, where a few percent of drift
+   costs nothing. Left as measured rather than re-fit to that one element. */
+@font-face {
+  font-family: "Geist Fallback";
+  font-weight: 500;
+  src: local("Arial"), local("Helvetica"), local("Liberation Sans");
+  size-adjust: 106.87%;
+  ascent-override: 94.04%;
+  descent-override: 27.6%;
   line-gap-override: 0%;
 }
 
@@ -41,8 +107,8 @@
 
   --font-display: "Instrument Serif", "Instrument Fallback", Georgia,
     "Times New Roman", serif;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo,
     Consolas, monospace;
 
@@ -107,6 +173,13 @@
 
   h1, h2, h3 {
     font-family: var(--font-display);
+    /* The only weight shipped. Headings are a different family from body text
+       again, so this no longer has to carry the hierarchy on its own -- but
+       Medium is what the one static cut is, and matching it exactly keeps the
+       browser from synthesising a weight it does not have. */
+    /* Instrument Serif ships one weight. Asking for 500 would match 400 by the
+       font-matching rules anyway, but only after the fallback had a chance to
+       synthesise one, so it is stated plainly. */
     font-weight: 400;
     letter-spacing: -0.015em;
     line-height: 1.05;
@@ -117,6 +190,14 @@
      wants to be. -0.015em is right at 28px and visibly loose at 93px. */
   h1 {
     letter-spacing: -0.025em;
+    /* Leading is optical too, and the 1.05 the rest of the headings use is a
+       text setting. Instrument Serif declares a 0.99em ascender against a much
+       smaller cap, so at 93px most of the gap between lines is metric air
+       rather than anything drawn -- closing it to 0.95 sets the block as one
+       shape. Compared against 0.90 and 0.88, where the y of "systems" starts
+       reaching for the ascenders on the line below. h2/h3 stay at 1.05; they
+       set a third the size and want the air. */
+    line-height: 0.95;
   }
 
   p {
@@ -359,6 +440,97 @@
     .perf-row .perf-detail { min-height: 2lh; }
   }
 
+  /* Footer now-playing line. Script-driven, so the styles live here rather
+     than as utility classes in markup the browser never receives. */
+  .now-playing {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 1.5rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-line);
+  }
+  .np-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .np-track[href] {
+    color: var(--color-text);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-color: var(--color-line);
+  }
+  .np-track[href]:hover {
+    text-decoration-color: var(--color-accent);
+  }
+
+  /* Sized against the text beside it, not to a control grid: this is an aside
+     in a footer, not a media player. */
+  .np-play {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .np-play:hover {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+  }
+  .np-play[data-playing] {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+  /* Glyphs drawn in CSS. The unicode triangle sits off its own centre and
+     renders as an emoji on some platforms, which is not a thing to ship at
+     1.6rem next to a serif-adjacent wordmark. */
+  .np-play::before {
+    content: "";
+    width: 0;
+    height: 0;
+    border-left: 0.44rem solid currentColor;
+    border-top: 0.3rem solid transparent;
+    border-bottom: 0.3rem solid transparent;
+    /* A triangle's visual centre sits left of its bounding box. */
+    margin-left: 0.14rem;
+  }
+  .np-play[data-playing]::before {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-left: 0;
+    border: 0;
+    background: currentColor;
+  }
+
+  /* Elapsed clip time as a hairline under the row. Driven by a custom property
+     so playback costs one style write per timeupdate and no layout. The basis
+     forces it onto its own flex line; at scale 0 it is a 1px invisible rule. */
+  .now-playing::after {
+    content: "";
+    flex: 1 1 100%;
+    height: 1px;
+    margin-top: 0.2rem;
+    background: var(--color-accent);
+    opacity: 0.5;
+    transform: scaleX(var(--np-progress, 0));
+    transform-origin: left;
+    /* timeupdate fires about four times a second; without this the rail
+       advances in visible steps. */
+    transition: transform 280ms linear;
+  }
+
   /* Long-form body copy for case studies. */
   .prose {
     max-width: var(--measure);
@@ -377,8 +549,11 @@
     /* Overridden to small uppercase sans, so it must not keep the 1.05 display
        leading it inherits -- that cramps the moment it wraps. */
     line-height: 1.3;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    /* 500 to match the other headings -- 600 is outside the shipped range and
+       would come back as a synthetic bold, which smears over letterspaced
+       uppercase. Tracking does the rest of the work. */
+    font-weight: 500;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--color-muted);
     margin-top: 2em;
@@ -416,8 +591,15 @@
     background: none;
     padding: 0;
   }
-  .prose ul, .prose ol {
+  /* Preflight strips list-style from every ul/ol, so markdown bullets render
+     as unmarked paragraphs until this puts them back. */
+  .prose ul {
     padding-left: 1.3em;
+    list-style: disc;
+  }
+  .prose ol {
+    padding-left: 1.3em;
+    list-style: decimal;
   }
   .prose li + li {
     margin-top: 0.4em;

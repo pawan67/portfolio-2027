@@ -20,11 +20,31 @@ definition stays in git rather than in Dokploy's database.
   | `DOMAIN` | `example.com` | Traefik host rules |
   | `IMAGE` | `ghcr.io/pawan67/portfolio-2027` | image to pull |
   | `TAG` | `latest` | overridden per deploy by CI |
+  | `LASTFM_USER` | `pawan67` | optional; footer now-playing line |
+  | `LASTFM_API_KEY` | | optional; from <https://www.last.fm/api/account/create> |
+
+Both Last.fm variables are optional and only work as a pair. Without them the
+footer's now-playing row removes itself, which is a supported state rather than
+a broken one. To turn it on: link Spotify to Last.fm once under **Spotify →
+Settings → Connect apps**, then create an API account for the key. Only the key
+is needed; the shared secret is for write methods the server never calls. The
+30-second sample is resolved separately from the iTunes Search API, which needs
+no credentials — Spotify stopped serving `preview_url` to new apps in late 2024.
+
+One Cloudflare note: samples are served from `/api/listening/preview/<key>.m4a`.
+The `.m4a` extension is what puts them in Cloudflare's default cache set, so a
+replayed track is answered at the edge rather than costing the VPS another
+megabyte. Do not rewrite that path without adding a cache rule to match.
 
 The compose file declares a named volume `rum-data` for the field-data
 checkpoint. Do not remove it between deploys or the 28-day window resets.
 
 Copy the deploy webhook URL Dokploy generates; CI needs it below.
+
+The branch set here is not cosmetic. The webhook validates the incoming push
+against it and answers `301 Branch Not Match` when it disagrees — a redirect
+rather than an error, so a mismatch reads as a successful call that deployed
+nothing. CI sends the branch it pushed from.
 
 ### 2. GitHub repository configuration
 

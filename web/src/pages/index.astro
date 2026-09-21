@@ -3,9 +3,12 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import WorkRow from '../components/WorkRow.astro';
 
-const work = (await getCollection('work', ({ data }) => !data.draft)).sort(
-  (a, b) => a.data.order - b.data.order,
-);
+/* "Selected work" means selected: the home page shows the first few by `order`
+   and sends the rest to /work/, which lists everything. Without the slice the
+   "All work" link below leads somewhere the reader has already been. */
+const work = (await getCollection('work', ({ data }) => !data.draft))
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 4);
 
 // Kept out of the markup so anchor text can sit flush against its tags --
 // a newline inside <a> renders as an underlined trailing space.
@@ -22,9 +25,10 @@ const link = 'underline underline-offset-4 hover:text-[var(--color-text)]';
     </h1>
 
     <p class="mt-8 max-w-[var(--measure)] text-[length:var(--text-lead)] text-[var(--color-muted)]">
-      Backend and infrastructure, mostly Go. Everything I run is self-hosted on a
-      single VPS — including this site, which is a static build compiled into a
-      Go binary and served from a container with nothing else in it.
+      Full-stack by trade, with a pull toward the infrastructure underneath.
+      Everything I run is self-hosted on a single VPS — including this site,
+      which is a static build compiled into a Go binary and served from a
+      container with nothing else in it.
     </p>
 
     <p class="mt-5 max-w-[var(--measure)] text-[var(--color-muted)]">

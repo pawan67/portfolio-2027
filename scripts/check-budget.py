@@ -17,8 +17,14 @@ MAX_HTML_BR = 14_336
 # visitors pay to download; the raw number guards parse cost and unbounded
 # growth. Revised up from an initial 10KB raw, which was set before any CSS
 # existed and sat below Tailwind's floor (preflight alone is ~4.3KB).
+#
+# Revised again from 16KB when the footer's now-playing row landed: its button,
+# glyphs and progress rail are ~1.5KB of minified CSS, on top of ~0.4KB the
+# working tree had already spent. The compressed budget is the one that tracks
+# what visitors actually pay and it is still under 75% used, so the raw ceiling
+# was the binding constraint rather than the meaningful one.
 MAX_CSS_BR = 6_144
-MAX_CSS_RAW = 16_384
+MAX_CSS_RAW = 20_480
 
 # Field measurement cannot be done without shipping code. The rule is that none
 # of it blocks rendering, and that the amount stays bounded.

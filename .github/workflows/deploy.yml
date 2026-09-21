@@ -55,21 +55,49 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
+      # Dokploy's deploy webhook validates the push against the branch
+      # configured on the app, and answers 301 "Branch Not Match" when it cannot
+      # find one in the payload. A 301 is not a failure to `curl -f`, so the old
+      # `{"tag": ...}` body left this step green while no rollout ever happened.
+      # It reads the branch the way GitHub sends it, and ignores a tag entirely:
+      # which image to pull is decided by TAG in the compose environment.
       - name: Trigger Dokploy rollout
+        env:
+          WEBHOOK_URL: ${{ secrets.DOKPLOY_WEBHOOK_URL }}
+          REF: ${{ github.ref_name }}
         run: |
-          curl -fsS -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}" \
+          [ -n "$WEBHOOK_URL" ] || { echo "DOKPLOY_WEBHOOK_URL is not set"; exit 1; }
+          code=$(curl -sS -o "$RUNNER_TEMP/dokploy.txt" -w '%{http_code}' \
+            -X POST "$WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
-            -d '{"tag":"${{ github.sha }}"}'
+            -H 'X-GitHub-Event: push' \
+            -d "{\"ref\":\"refs/heads/$REF\"}")
+          echo "dokploy replied $code: $(cat "$RUNNER_TEMP/dokploy.txt")"
+          case "$code" in 2??) ;; *) exit 1 ;; esac
 
       # HTML is cached at the edge with s-maxage=31536000, so a deploy is only
       # live once the edge is purged.
       - name: Purge Cloudflare cache
+        env:
+          ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          curl -fsS -X POST \
-            "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/purge_cache" \
-            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+          # An unset secret interpolates to nothing rather than erroring, which
+          # turned this into a POST to /zones//purge_cache: a 404 that reads
+          # like a wrong zone id instead of a missing one.
+          [ -n "$ZONE_ID" ] || { echo "CLOUDFLARE_ZONE_ID is not set"; exit 1; }
+          [ -n "$API_TOKEN" ] || { echo "CLOUDFLARE_API_TOKEN is not set"; exit 1; }
+          # -f would suppress the body, and Cloudflare puts the reason in it.
+          body=$(curl -sS -X POST \
+            "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
+            -H "Authorization: Bearer $API_TOKEN" \
             -H 'Content-Type: application/json' \
-            -d '{"purge_everything":true}'
+            -d '{"purge_everything":true}')
+          echo "$body"
+          case "$(printf '%s' "$body" | tr -d ' ')" in
+            *'"success":true'*) ;;
+            *) exit 1 ;;
+          esac
 
       - name: Verify the deploy is actually live
         run: |
